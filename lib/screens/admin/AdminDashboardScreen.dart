@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:quizeapp/screens/admin/components/DrawerWidget.dart';
 import 'package:quizeapp/screens/admin/sahih_muslim/SahihMuslimHadeesListWidget.dart';
+import 'package:quizeapp/screens/admin/subject/subject_detail_screen.dart';
 import 'package:quizeapp/utils/Colors.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -10,7 +11,7 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  Widget currentWidget = SahihMuslimHadeesListWidget();
+  Widget currentWidget = SubjectDetailScreen();
 
   @override
   void initState() {
@@ -36,7 +37,7 @@ class AdminDashboardScreenState extends State<AdminDashboardScreen> {
         elevation: 0.0,
         title: Row(
           children: [
-            Text('Search Hadees',
+            Text('Quran Encyclopedia Admin',
                 textAlign: TextAlign.start,
                 style: primaryTextStyle(color: white)),
           ],
