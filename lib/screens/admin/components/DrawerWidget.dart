@@ -10,7 +10,6 @@ import 'package:quizeapp/screens/admin/subject/form_screen.dart';
 import 'package:quizeapp/screens/admin/subject/subject_detail_screen.dart';
 import 'package:quizeapp/screens/admin/dictionary/DictionaryWordsListScreen.dart';
 import 'package:quizeapp/screens/admin/dictionary/AddDictionaryWordScreen.dart';
-import 'package:quizeapp/screens/admin/dictionary/DictionaryDashboardWidget.dart';
 import 'package:quizeapp/utils/Colors.dart';
 
 class DrawerWidget extends StatefulWidget {
@@ -72,13 +71,6 @@ class _DrawerWidgetState extends State<DrawerWidget> {
         name: 'Add Subject',
         widget: FormScreen(),
         imageAsset: 'assets/icons/addQuestion.png',
-      ),
-    );
-    list.add(
-      ListModel(
-        name: 'Dictionary Dashboard',
-        widget: DictionaryDashboardWidget(),
-        imageAsset: 'assets/icons/category.png',
       ),
     );
     list.add(

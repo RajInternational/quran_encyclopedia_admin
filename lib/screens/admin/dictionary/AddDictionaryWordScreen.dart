@@ -1,53 +1,41 @@
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui;
 import 'package:nb_utils/nb_utils.dart';
 import 'package:quizeapp/models/DictionaryWordData.dart';
+import 'dart:ui' as ui;
 import 'package:quizeapp/services/DictionaryWordService.dart';
 import 'package:quizeapp/utils/Colors.dart';
 import 'package:quizeapp/utils/Common.dart';
+import 'package:quizeapp/main.dart';
 
 class AddDictionaryWordScreen extends StatefulWidget {
   final DictionaryWordData? wordToEdit;
 
-  const AddDictionaryWordScreen({Key? key, this.wordToEdit}) : super(key: key);
+  AddDictionaryWordScreen({this.wordToEdit});
 
   @override
-  State<AddDictionaryWordScreen> createState() => _AddDictionaryWordScreenState();
+  _AddDictionaryWordScreenState createState() => _AddDictionaryWordScreenState();
 }
 
 class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _arabicWordController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _referenceController = TextEditingController();
-
-  final DictionaryWordService _dictionaryService = DictionaryWordService();
+  final _arabicWordController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _referenceController = TextEditingController();
+  
   bool _isLoading = false;
-  bool _isEditMode = false;
 
   @override
   void initState() {
     super.initState();
-    _isEditMode = widget.wordToEdit != null;
-    if (_isEditMode) {
+    if (widget.wordToEdit != null) {
       _arabicWordController.text = widget.wordToEdit!.arabicWord ?? '';
       _descriptionController.text = widget.wordToEdit!.description ?? '';
       _referenceController.text = widget.wordToEdit!.reference ?? '';
     }
   }
 
-  @override
-  void dispose() {
-    _arabicWordController.dispose();
-    _descriptionController.dispose();
-    _referenceController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveDictionaryWord() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  Future<void> _saveWord() async {
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isLoading = true;
@@ -55,22 +43,24 @@ class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
 
     try {
       final word = DictionaryWordData(
-        id: _isEditMode ? widget.wordToEdit!.id : null,
+        id: widget.wordToEdit?.id,
         arabicWord: _arabicWordController.text.trim(),
         description: _descriptionController.text.trim(),
         reference: _referenceController.text.trim(),
-        createdAt: _isEditMode ? widget.wordToEdit!.createdAt : DateTime.now(),
-        updatedAt: DateTime.now(),
       );
 
-      if (_isEditMode) {
-        await _dictionaryService.updateDictionaryWord(word);
-        toast('Dictionary word updated successfully!');
+      if (widget.wordToEdit != null) {
+        await dictionaryWordService.updateDictionaryWord(word);
+        toast('Word updated successfully!');
       } else {
-        await _dictionaryService.addDictionaryWord(word);
-        toast('Dictionary word added successfully!');
-        _clearForm();
+        await dictionaryWordService.addDictionaryWord(word);
+        toast('Word added successfully!');
       }
+
+      // Emit refresh event for Dictionary Words list
+      LiveStream().emit('refreshDictionaryWords', true);
+      
+      Navigator.pop(context, true);
     } catch (e) {
       toast('Error: ${e.toString()}');
     } finally {
@@ -80,254 +70,326 @@ class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
     }
   }
 
-  void _clearForm() {
-    _arabicWordController.clear();
-    _descriptionController.clear();
-    _referenceController.clear();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: colorPrimary,
-        elevation: 0,
         title: Text(
-          _isEditMode ? 'Edit Dictionary Word' : 'Add Dictionary Word',
+          widget.wordToEdit != null ? 'Edit Dictionary Word' : 'Add Dictionary Word',
           style: boldTextStyle(color: Colors.white),
         ),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        backgroundColor: colorPrimary,
+        elevation: 0,
+        actions: [
+          if (_isLoading)
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            )
+          else
+            IconButton(
+              icon: Icon(Icons.save, color: Colors.white),
+              onPressed: _saveWord,
+              tooltip: 'Save',
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Card
+              // Arabic Word Field
               Container(
-                padding: EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [colorPrimary, colorPrimary.withOpacity(0.8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: colorPrimary.withOpacity(0.3),
+                      color: Colors.black.withOpacity(0.05),
                       blurRadius: 10,
-                      offset: Offset(0, 5),
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.translate,
-                      size: 48,
-                      color: Colors.white,
+                    Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: colorPrimary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.text_fields,
+                              color: colorPrimary,
+                              size: 20,
+                            ),
+                          ),
+                          12.width,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Arabic Word',
+                                  style: boldTextStyle(size: 16),
+                                ),
+                                4.height,
+                                Text(
+                                  'Enter the Arabic word',
+                                  style: secondaryTextStyle(size: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    16.height,
-                    Text(
-                      'Arabic Dictionary Word',
-                      style: boldTextStyle(size: 20, color: Colors.white),
-                      textAlign: TextAlign.center,
-                    ),
-                    8.height,
-                    Text(
-                      _isEditMode 
-                          ? 'Update the dictionary word information below'
-                          : 'Add a new Arabic word to the dictionary',
-                      style: secondaryTextStyle(color: Colors.white70),
-                      textAlign: TextAlign.center,
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: TextFormField(
+                        controller: _arabicWordController,
+                        textDirection: ui.TextDirection.rtl,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontFamily: 'NotoNastaliq',
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'اِلَّا',
+                          hintStyle: TextStyle(
+                            fontSize: 18,
+                            fontFamily: 'NotoNastaliq',
+                            color: Colors.grey[400],
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: colorPrimary, width: 2),
+                          ),
+                          contentPadding: EdgeInsets.all(16),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Arabic word is required';
+                          }
+                          return null;
+                        },
+                      ),
                     ),
                   ],
                 ),
               ),
               24.height,
 
-              // Arabic Word Input
-              _buildInputCard(
-                title: 'Arabic Word',
-                subtitle: 'Enter the Arabic word',
-                icon: Icons.text_fields,
-                child: TextFormField(
-                  controller: _arabicWordController,
-                  textDirection: ui.TextDirection.rtl,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: 'NotoNastaliq',
-                    fontWeight: FontWeight.w500,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'اِلَّا',
-                    hintStyle: TextStyle(
-                      fontFamily: 'NotoNastaliq',
-                      color: Colors.grey[400],
+              // Description Field
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: Offset(0, 2),
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colorPrimary, width: 2),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter an Arabic word';
-                    }
-                    return null;
-                  },
+                  ],
                 ),
-              ),
-              16.height,
-
-              // Description Input
-              _buildInputCard(
-                title: 'Description',
-                subtitle: 'Enter the word description in Urdu',
-                icon: Icons.description,
-                child: TextFormField(
-                  controller: _descriptionController,
-                  textDirection: ui.TextDirection.rtl,
-                  maxLines: 4,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontFamily: 'NotoNastaliq',
-                    height: 1.5,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'اِلَّا: [حرف] (۱) الاّ کے معنی بطورِ حرفِ جر: علاوہ، سِوا، بِغیر، بِشمول کے آتے ہیں۔',
-                    hintStyle: TextStyle(
-                      fontFamily: 'NotoNastaliq',
-                      color: Colors.grey[400],
-                      height: 1.5,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colorPrimary, width: 2),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a description';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              16.height,
-
-              // Reference Input
-              _buildInputCard(
-                title: 'Reference Image URL',
-                subtitle: 'Enter the reference image URL (optional)',
-                icon: Icons.image,
-                child: TextFormField(
-                  controller: _referenceController,
-                  keyboardType: TextInputType.url,
-                  style: TextStyle(fontSize: 16),
-                  decoration: InputDecoration(
-                    hintText: 'https://example.com/image.png',
-                    hintStyle: TextStyle(color: Colors.grey[400]),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colorPrimary, width: 2),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    suffixIcon: Icon(Icons.link, color: Colors.grey[400]),
-                  ),
-                ),
-              ),
-              32.height,
-
-              // Action Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _clearForm,
-                      icon: Icon(Icons.clear),
-                      label: Text('Clear'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[300],
-                        foregroundColor: Colors.grey[700],
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.description,
+                              color: Colors.blue,
+                              size: 20,
+                            ),
+                          ),
+                          12.width,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Description (Arabic/Urdu)',
+                                  style: boldTextStyle(size: 16),
+                                ),
+                                4.height,
+                                Text(
+                                  'Enter detailed description',
+                                  style: secondaryTextStyle(size: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  16.width,
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _saveDictionaryWord,
-                      icon: _isLoading 
-                          ? SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : Icon(_isEditMode ? Icons.update : Icons.save),
-                      label: Text(_isLoading 
-                          ? 'Saving...' 
-                          : _isEditMode ? 'Update Word' : 'Save Word'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorPrimary,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: TextFormField(
+                        controller: _descriptionController,
+                        textDirection: ui.TextDirection.rtl,
+                        maxLines: 4,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontFamily: 'NotoNastaliq',
+                          height: 1.4,
+                          color: Colors.black87,
                         ),
-                        elevation: 3,
+                        decoration: InputDecoration(
+                          hintText: 'اِلَّا: [حرف] (۱) الاّ کے معنی بطورِ حرفِ جر: علاوہ، سِوا، بِغیر، بِشمول کے آتے ہیں۔',
+                          hintStyle: TextStyle(
+                            fontSize: 16,
+                            fontFamily: 'NotoNastaliq',
+                            color: Colors.grey[400],
+                            height: 1.4,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.blue, width: 2),
+                          ),
+                          contentPadding: EdgeInsets.all(16),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Description is required';
+                          }
+                          return null;
+                        },
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               24.height,
+
+              // Reference Field
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.link,
+                              color: Colors.green,
+                              size: 20,
+                            ),
+                          ),
+                          12.width,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Reference URL (Optional)',
+                                  style: boldTextStyle(size: 16),
+                                ),
+                                4.height,
+                                Text(
+                                  'Add reference link or image URL',
+                                  style: secondaryTextStyle(size: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: TextFormField(
+                        controller: _referenceController,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'https://example.com/image.png',
+                          hintStyle: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[400],
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.green, width: 2),
+                          ),
+                          contentPadding: EdgeInsets.all(16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -335,61 +397,11 @@ class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
     );
   }
 
-  Widget _buildInputCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Widget child,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: colorPrimary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: colorPrimary, size: 20),
-              ),
-              12.width,
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: boldTextStyle(size: 16),
-                    ),
-                    4.height,
-                    Text(
-                      subtitle,
-                      style: secondaryTextStyle(size: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          16.height,
-          child,
-        ],
-      ),
-    );
+  @override
+  void dispose() {
+    _arabicWordController.dispose();
+    _descriptionController.dispose();
+    _referenceController.dispose();
+    super.dispose();
   }
 }
