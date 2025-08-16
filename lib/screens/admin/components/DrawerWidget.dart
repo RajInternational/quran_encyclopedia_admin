@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:quizeapp/models/ListModel.dart';
-import 'package:quizeapp/screens/admin/CategoryListScreen.dart';
-import 'package:quizeapp/screens/admin/sahih_bukhari/SahihBukhariAddHadeesScreen.dart';
-import 'package:quizeapp/screens/admin/sahih_bukhari/SahihBukhariHadeesListWidget.dart';
-import 'package:quizeapp/screens/admin/sahih_muslim/SahihMuslimAddHadeesScreen.dart';
-import 'package:quizeapp/screens/admin/sahih_muslim/SahihMuslimHadeesListWidget.dart';
 import 'package:quizeapp/screens/admin/subject/form_screen.dart';
 import 'package:quizeapp/screens/admin/subject/subject_detail_screen.dart';
 import 'package:quizeapp/screens/admin/dictionary/DictionaryWordsListScreen.dart';
@@ -34,31 +29,6 @@ class _DrawerWidgetState extends State<DrawerWidget> {
   }
 
   Future<void> init() async {
-    // list.add(ListModel(name: 'Dashboard', widget: AdminStatisticsWidget(), iconData: AntDesign.dashboard));
-    // list.add(ListModel(
-    //     name: 'Category List',
-    //     widget: CategoryListScreen(),
-    //     imageAsset: 'assets/icons/category.png'));
-    // list.add(ListModel(
-    //   name: 'Sahih Muslim Hadees List',
-    //   widget: SahihMuslimHadeesListWidget(),
-    //   imageAsset: 'assets/icons/allquestion.png',
-    // ));
-    // list.add(ListModel(
-    //     name: 'Add Sahih Muslim Hadees',
-    //     widget: SahihMuslimAddHadeesScreen(),
-    //     imageAsset: 'assets/icons/addQuestion.png'));
-    // list.add(ListModel(
-    //     name: 'Sahih Bukhari Hadees List',
-    //     widget: SahihBukhariHadeesListWidget(),
-    //     imageAsset: 'assets/icons/allquestion.png'));
-    // list.add(
-    //   ListModel(
-    //     name: 'Add Sahih Bukhari Hadees',
-    //     widget: SahihBukhariAddHadeesScreen(),
-    //     imageAsset: 'assets/icons/addQuestion.png',
-    //   ),
-    // );
     list.add(
       ListModel(
         name: 'View Subject',
@@ -88,20 +58,11 @@ class _DrawerWidgetState extends State<DrawerWidget> {
       ),
     );
 
-    // list.add(ListModel(name: 'Daily Quiz', widget: DailyQuizScreen(), imageAsset: 'assets/icons/dailyQuiz.png'));
-    // list.add(ListModel(name: 'Quiz List', widget: QuizListScreen(), imageAsset: 'assets/icons/allQuiz.png'));
-    // list.add(ListModel(name: 'Create Quiz', widget: CreateQuizScreen(), imageAsset: 'assets/icons/createQuiz.png'));
-    //list.add(ListModel(name: 'Import Question', widget: ImportQuestionScreen(), imageAsset: 'assets/icons/import.png'));
-    //list.add(ListModel(name: 'Notifications', widget: NotificationScreen(), iconData: AntDesign.bells));
-    // list.add(ListModel(name: 'Manage Users', widget: UserListScreen(), iconData: Feather.users));
-    // list.add(ListModel(name: 'Settings', widget: AdminSettingScreen(), iconData: Feather.settings));
-
     LiveStream().on('selectItem', (index) {
       this.index = index as int;
       widget.onWidgetSelected?.call(list[this.index].widget);
       setState(() {});
     });
-
   }
 
   @override
@@ -137,7 +98,6 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                 titleTextColor: cIndex == index ? colorPrimary : Colors.white,
                 decoration: BoxDecoration(
                   color: cIndex == index ? selectedDrawerItemColor : null,
-                  //  border: Border.all(),
                   borderRadius: cIndex == index - 1
                       ? BorderRadius.only(
                           bottomRight: Radius.circular(24),

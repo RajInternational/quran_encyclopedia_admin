@@ -7,13 +7,6 @@ import 'package:nb_utils/nb_utils.dart';
 import 'package:quizeapp/screens/SplashScreen.dart';
 import 'package:quizeapp/services/AppSettingService.dart';
 import 'package:quizeapp/services/CategoryService.dart';
-import 'package:quizeapp/services/DailyQuizServices.dart';
-import 'package:quizeapp/services/QuizServices.dart';
-import 'package:quizeapp/services/SahihBukhariHadeesService.dart';
-import 'package:quizeapp/services/SahihBukhariKitabService.dart';
-import 'package:quizeapp/services/SahihMuslimHadeesService.dart';
-import 'package:quizeapp/services/SahihMuslimKitabService.dart';
-import 'package:quizeapp/services/UserService.dart';
 import 'package:quizeapp/services/DictionaryWordService.dart';
 import 'package:quizeapp/store/AppStore.dart';
 import 'package:quizeapp/utils/Colors.dart';
@@ -26,15 +19,7 @@ AppStore appStore = AppStore();
 FirebaseFirestore db = FirebaseFirestore.instance;
 FirebaseAuth auth = FirebaseAuth.instance;
 
-UserService userService = UserService();
-SahihMuslimHadeesService sahihMuslimHadeesService = SahihMuslimHadeesService();
-SahihBukhariHadeesService sahihBukhariHadeesService =
-    SahihBukhariHadeesService();
-SahihMuslimKitabService sahihMuslimKitabService = SahihMuslimKitabService();
-SahihBukhariKitabService sahihBukhariKitabService = SahihBukhariKitabService();
 CategoryService categoryService = CategoryService();
-QuizServices quizServices = QuizServices();
-DailyQuizServices dailyQuizServices = DailyQuizServices();
 AppSettingService appSettingService = AppSettingService();
 DictionaryWordService dictionaryWordService = DictionaryWordService();
 
@@ -58,7 +43,6 @@ void main() async {
       OutlineInputBorder(borderSide: BorderSide(color: colorPrimary));
 
   appStore.setLanguage(getStringAsync(LANGUAGE, defaultValue: defaultLanguage));
-  // appStore.setLoggedIn(getBoolAsync(IS_LOGGED_IN));
 
   if (appStore.isLoggedIn) {
     appStore.setUserId(getStringAsync(USER_ID));
@@ -72,22 +56,6 @@ void main() async {
   setTheme();
 
   if (isMobile || isWeb) {
-    // if (isWeb) {
-    //   await Firebase.initializeApp(
-    //           options: FirebaseOptions(
-    //               apiKey: "AIzaSyDxTk3Vhu4qYKw3sUtBg6lHFfa6itfWlvE",
-    //               authDomain: "search-quran-raj.firebaseapp.com",
-    //               projectId: "search-quran-raj",
-    //               storageBucket: "search-quran-raj.appspot.com",
-    //               messagingSenderId: "267518604153",
-    //               appId: "1:267518604153:web:0687796526ccb2136ff5a8",
-    //               measurementId: "G-0HZ3Z6CQS9"))
-    //       .then((value) {
-    //     //FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
-    //     //MobileAds.instance.initialize();
-    //   });
-    // }
-    // if (isMobile) {
     await Firebase.initializeApp(
         options: FirebaseOptions(
       apiKey: "AIzaSyDxTk3Vhu4qYKw3sUtBg6lHFfa6itfWlvE",
@@ -100,22 +68,6 @@ void main() async {
       //FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
       //MobileAds.instance.initialize();
     });
-    // }
-
-    /*  if (isMobile) {
-      await OneSignal.shared.init(
-        mOneSignalAppId,
-        iOSSettings: {OSiOSSettings.autoPrompt: false, OSiOSSettings.promptBeforeOpeningPushUrl: true, OSiOSSettings.inAppAlerts: false},
-      );
-
-      OneSignal.shared.setInFocusDisplayType(OSNotificationDisplayType.notification);
-
-      OneSignal.shared.getPermissionSubscriptionState().then((value) {
-        log(value.jsonRepresentation());
-
-        setValue(PLAYER_ID, value.subscriptionStatus.userId.validate());
-      });
-    }*/
   }
   runApp(MyApp());
 }
@@ -126,12 +78,9 @@ class MyApp extends StatelessWidget {
     return Observer(
       builder: (_) => MaterialApp(
         title: mAppName,
-        // theme: AppTheme.darkTheme,
         themeMode: appStore.isDarkMode ? ThemeMode.dark : ThemeMode.light,
         debugShowCheckedModeBanner: false,
-        home:
-            // AdminDashboardScreen()
-            SplashScreen(),
+        home: SplashScreen(),
       ),
     );
   }
