@@ -8,6 +8,9 @@ import 'package:quizeapp/screens/admin/sahih_muslim/SahihMuslimAddHadeesScreen.d
 import 'package:quizeapp/screens/admin/sahih_muslim/SahihMuslimHadeesListWidget.dart';
 import 'package:quizeapp/screens/admin/subject/form_screen.dart';
 import 'package:quizeapp/screens/admin/subject/subject_detail_screen.dart';
+import 'package:quizeapp/screens/admin/dictionary/DictionaryWordsListScreen.dart';
+import 'package:quizeapp/screens/admin/dictionary/AddDictionaryWordScreen.dart';
+import 'package:quizeapp/screens/admin/dictionary/DictionaryDashboardWidget.dart';
 import 'package:quizeapp/utils/Colors.dart';
 
 class DrawerWidget extends StatefulWidget {
@@ -68,6 +71,27 @@ class _DrawerWidgetState extends State<DrawerWidget> {
       ListModel(
         name: 'Add Subject',
         widget: FormScreen(),
+        imageAsset: 'assets/icons/addQuestion.png',
+      ),
+    );
+    list.add(
+      ListModel(
+        name: 'Dictionary Dashboard',
+        widget: DictionaryDashboardWidget(),
+        imageAsset: 'assets/icons/category.png',
+      ),
+    );
+    list.add(
+      ListModel(
+        name: 'Dictionary Words',
+        widget: DictionaryWordsListScreen(),
+        imageAsset: 'assets/icons/allquestion.png',
+      ),
+    );
+    list.add(
+      ListModel(
+        name: 'Add Dictionary Word',
+        widget: AddDictionaryWordScreen(),
         imageAsset: 'assets/icons/addQuestion.png',
       ),
     );

@@ -20,7 +20,7 @@ class AppTheme {
     unselectedWidgetColor: Colors.black,
     dividerColor: viewLineColor,
     cardColor: Colors.white,
-    dialogTheme: DialogTheme(shape: dialogShape()),
+    dialogTheme: DialogThemeData(shape: dialogShape()),
     appBarTheme: AppBarTheme(
         // brightness: Brightness.light,
         ),
@@ -47,7 +47,7 @@ class AppTheme {
     unselectedWidgetColor: Colors.white60,
     dividerColor: Colors.white12,
     cardColor: scaffoldSecondaryDark,
-    dialogTheme: DialogTheme(shape: dialogShape()),
+    dialogTheme: DialogThemeData(shape: dialogShape()),
     appBarTheme: AppBarTheme(
         // systemOverlayStyle: SystemUiOverlayStyle!.dark!
         // brightness: Brightness.dark,

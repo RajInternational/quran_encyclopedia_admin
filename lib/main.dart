@@ -14,6 +14,7 @@ import 'package:quizeapp/services/SahihBukhariKitabService.dart';
 import 'package:quizeapp/services/SahihMuslimHadeesService.dart';
 import 'package:quizeapp/services/SahihMuslimKitabService.dart';
 import 'package:quizeapp/services/UserService.dart';
+import 'package:quizeapp/services/DictionaryWordService.dart';
 import 'package:quizeapp/store/AppStore.dart';
 import 'package:quizeapp/utils/Colors.dart';
 import 'package:quizeapp/utils/Common.dart';
@@ -35,6 +36,7 @@ CategoryService categoryService = CategoryService();
 QuizServices quizServices = QuizServices();
 DailyQuizServices dailyQuizServices = DailyQuizServices();
 AppSettingService appSettingService = AppSettingService();
+DictionaryWordService dictionaryWordService = DictionaryWordService();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
