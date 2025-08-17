@@ -78,20 +78,15 @@ class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
 
   KeyboardController _getCurrentKeyboardController() {
     final currentField = _keyboardCubit.state.currentInputField;
-    print('DEBUG: Getting controller for field: $currentField');
     
     switch (currentField) {
       case 'arabicWord':
-        print('DEBUG: Returning Arabic Word controller');
         return _arabicWordKeyboardController;
       case 'rootWord':
-        print('DEBUG: Returning Root Word controller');
         return _rootWordKeyboardController;
       case 'description':
-        print('DEBUG: Returning Description controller');
         return _descriptionKeyboardController;
       default:
-        print('DEBUG: Returning default Arabic Word controller');
         return _arabicWordKeyboardController;
     }
   }
@@ -146,17 +141,31 @@ class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
       if (widget.wordToEdit != null) {
         await dictionaryWordService.updateDictionaryWord(word);
         toast('Word updated successfully!');
+        
+        // Emit refresh event for Dictionary Words list
+        LiveStream().emit('refreshDictionaryWords', true);
+        
+        // Navigate back immediately for edit
+        Navigator.pop(context, true);
       } else {
         await dictionaryWordService.addDictionaryWord(word);
         toast('Word added successfully!');
+        
+        // Emit refresh event for Dictionary Words list
+        LiveStream().emit('refreshDictionaryWords', true);
+        
+        // Clear all form fields after successful addition (only for new words)
+        _arabicWordController.clear();
+        _rootWordController.clear();
+        _descriptionController.clear();
+        _referenceController.clear();
+        
+        // Reset form validation
+        _formKey.currentState?.reset();
+        
+        // Don't navigate back for new words - stay on the form for adding more
+        // The user can manually go back or add another word
       }
-
-      // Emit refresh event for Dictionary Words list
-      LiveStream().emit('refreshDictionaryWords', true);
-      
-      // Navigate back after a short delay to ensure UI updates
-      await Future.delayed(Duration(milliseconds: 100));
-      Navigator.pop(context, true);
     } catch (e) {
       toast('Error: ${e.toString()}');
     } finally {
@@ -180,6 +189,13 @@ class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
           ),
           backgroundColor: colorPrimary,
           elevation: 0,
+          leading: widget.wordToEdit == null 
+            ? IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+                tooltip: 'Back to List',
+              )
+            : null,
           actions: [
             if (_isLoading)
               Padding(

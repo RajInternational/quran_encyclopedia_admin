@@ -5,7 +5,7 @@ import 'package:quizeapp/screens/admin/dictionary/AddDictionaryWordScreen.dart';
 import 'package:quizeapp/services/DictionaryWordService.dart';
 import 'package:quizeapp/utils/Constants.dart';
 import 'package:quizeapp/utils/Colors.dart';
-import 'package:quizeapp/utils/Common.dart';
+
 import 'package:intl/intl.dart';
 import 'dart:ui' as ui;
 import 'package:quizeapp/main.dart';
@@ -25,7 +25,8 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
   bool _isSearching = false;
   String _searchQuery = '';
   int _totalWords = 0;
-  bool _isLoading = false;
+  PaginationCubit? _paginationCubit;
+
 
   @override
   void initState() {
@@ -36,9 +37,7 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
     LiveStream().on('refreshDictionaryWords', (data) {
       if (mounted) {
         _loadTotalCount();
-        if (context.mounted) {
-          context.read<PaginationCubit>().refreshPaginatedList();
-        }
+        // With live mode enabled, the list should update automatically
       }
     });
   }
@@ -81,11 +80,11 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
       try {
         await dictionaryWordService.deleteDictionaryWord(word.id);
         toast('Word deleted successfully!');
-        // Refresh the pagination
-        if (context.mounted) {
-          context.read<PaginationCubit>().refreshPaginatedList();
-        }
+        // With live mode enabled, the list should update automatically
+        // Just refresh the total count
+        _loadTotalCount();
       } catch (e) {
+        print(e);
         toast('Error deleting word: ${e.toString()}');
       }
     }
@@ -98,10 +97,9 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
         builder: (context) => AddDictionaryWordScreen(wordToEdit: word),
       ),
     ).then((_) {
-      // Refresh the pagination when returning from edit
-      if (context.mounted) {
-        context.read<PaginationCubit>().refreshPaginatedList();
-      }
+      // With live mode enabled, the list should update automatically
+      // Just refresh the total count
+      _loadTotalCount();
     });
   }
 
@@ -114,30 +112,40 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: Text(
-          'Dictionary Words',
-          style: boldTextStyle(color: Colors.white),
-        ),
-        backgroundColor: colorPrimary,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add, color: Colors.white),
-            onPressed: () {
-              // Navigate to Add Dictionary Word screen using drawer navigation
-              LiveStream().emit(
-                'selectItem',
-                3,
-              ); // Index 3 is "Add Dictionary Word"
-            },
-            tooltip: 'Add New Word',
+    return BlocProvider(
+             create: (context) {
+         _paginationCubit = PaginationCubit(
+           db.collection('dictionary_words').orderBy('createdAt', descending: true),
+           20,
+           null,
+           isLive: true, // Enable live updates
+         );
+         return _paginationCubit!;
+       },
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
+        appBar: AppBar(
+          title: Text(
+            'Dictionary Words',
+            style: boldTextStyle(color: Colors.white),
           ),
-        ],
-      ),
-      body: Column(
+          backgroundColor: colorPrimary,
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: Icon(Icons.add, color: Colors.white),
+              onPressed: () {
+                // Navigate to Add Dictionary Word screen using drawer navigation
+                LiveStream().emit(
+                  'selectItem',
+                  3,
+                ); // Index 3 is "Add Dictionary Word"
+              },
+              tooltip: 'Add New Word',
+            ),
+          ],
+        ),
+        body: Column(
         children: [
           // Search Bar
           Container(
@@ -248,7 +256,7 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildPaginatedList() {
@@ -269,10 +277,11 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
         ),
         // Paginated list
         Expanded(
-          child: PaginateFirestore(
-            query: query,
-            itemsPerPage: 20, // Load 20 items per page
-            itemBuilderType: PaginateBuilderType.listView,
+                   child: PaginateFirestore(
+           query: query,
+           itemsPerPage: 20, // Load 20 items per page
+           itemBuilderType: PaginateBuilderType.listView,
+           isLive: true, // Enable live updates
             itemBuilder: (context, documentSnapshots, index) {
               final doc = documentSnapshots[index];
               final word = DictionaryWordData.fromJson(
@@ -310,14 +319,10 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
                         MaterialPageRoute(
                           builder: (context) => AddDictionaryWordScreen(),
                         ),
-                      ).then((_) {
-                        if (context.mounted) {
-                          context
-                              .read<PaginationCubit>()
-                              .refreshPaginatedList();
-                          _loadTotalCount();
-                        }
-                      });
+                                             ).then((_) {
+                         // With live mode enabled, the list should update automatically
+                         _loadTotalCount();
+                       });
                     },
                     icon: Icon(Icons.add),
                     label: Text('Add First Word'),
@@ -564,6 +569,7 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
   void dispose() {
     _searchController.dispose();
     LiveStream().dispose('refreshDictionaryWords');
+    _paginationCubit?.close();
     super.dispose();
   }
 }

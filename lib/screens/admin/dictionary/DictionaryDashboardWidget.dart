@@ -6,7 +6,7 @@ import 'package:quizeapp/screens/admin/dictionary/AddDictionaryWordScreen.dart';
 import 'package:quizeapp/screens/admin/dictionary/DictionaryWordsListScreen.dart';
 import 'package:quizeapp/services/DictionaryWordService.dart';
 import 'package:quizeapp/utils/Colors.dart';
-import 'package:quizeapp/utils/Common.dart';
+
 import 'package:quizeapp/utils/Constants.dart';
 import 'package:intl/intl.dart';
 
