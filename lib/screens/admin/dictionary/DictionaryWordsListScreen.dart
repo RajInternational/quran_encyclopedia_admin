@@ -463,6 +463,18 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
                         ),
                         textDirection: ui.TextDirection.rtl,
                       ),
+                      4.height,
+                      if (word.rootWord != null && word.rootWord!.isNotEmpty)
+                        Text(
+                          'Root: ${word.rootWord!}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontFamily: 'NotoNastaliq',
+                            color: Colors.purple[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textDirection: ui.TextDirection.rtl,
+                        ),
                       8.height,
                       if (word.description != null && word.description!.isNotEmpty)
                         Text(

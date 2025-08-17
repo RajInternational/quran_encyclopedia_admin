@@ -19,6 +19,7 @@ class AddDictionaryWordScreen extends StatefulWidget {
 class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _arabicWordController = TextEditingController();
+  final _rootWordController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _referenceController = TextEditingController();
   
@@ -29,6 +30,7 @@ class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
     super.initState();
     if (widget.wordToEdit != null) {
       _arabicWordController.text = widget.wordToEdit!.arabicWord ?? '';
+      _rootWordController.text = widget.wordToEdit!.rootWord ?? '';
       _descriptionController.text = widget.wordToEdit!.description ?? '';
       _referenceController.text = widget.wordToEdit!.reference ?? '';
     }
@@ -45,6 +47,7 @@ class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
       final word = DictionaryWordData(
         id: widget.wordToEdit?.id,
         arabicWord: _arabicWordController.text.trim(),
+        rootWord: _rootWordController.text.trim(),
         description: _descriptionController.text.trim(),
         reference: _referenceController.text.trim(),
       );
@@ -199,6 +202,97 @@ class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
                           }
                           return null;
                         },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              24.height,
+
+              // Root Word Field
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.text_fields,
+                              color: Colors.purple,
+                              size: 20,
+                            ),
+                          ),
+                          12.width,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Root Word (Optional)',
+                                  style: boldTextStyle(size: 16),
+                                ),
+                                4.height,
+                                Text(
+                                  'Enter the root word of the Arabic word',
+                                  style: secondaryTextStyle(size: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: TextFormField(
+                        controller: _rootWordController,
+                        textDirection: ui.TextDirection.rtl,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontFamily: 'NotoNastaliq',
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'الّا',
+                          hintStyle: TextStyle(
+                            fontSize: 18,
+                            fontFamily: 'NotoNastaliq',
+                            color: Colors.grey[400],
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.purple, width: 2),
+                          ),
+                          contentPadding: EdgeInsets.all(16),
+                        ),
                       ),
                     ),
                   ],
@@ -400,6 +494,7 @@ class _AddDictionaryWordScreenState extends State<AddDictionaryWordScreen> {
   @override
   void dispose() {
     _arabicWordController.dispose();
+    _rootWordController.dispose();
     _descriptionController.dispose();
     _referenceController.dispose();
     super.dispose();

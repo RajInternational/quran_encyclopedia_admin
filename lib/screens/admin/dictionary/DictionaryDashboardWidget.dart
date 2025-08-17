@@ -413,6 +413,18 @@ class _DictionaryDashboardWidgetState extends State<DictionaryDashboardWidget> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             4.height,
+            if (word.rootWord != null && word.rootWord!.isNotEmpty)
+              Text(
+                'Root: ${word.rootWord!}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontFamily: 'NotoNastaliq',
+                  color: Colors.purple[600],
+                  fontWeight: FontWeight.w500,
+                ),
+                textDirection: ui.TextDirection.rtl,
+              ),
+            4.height,
             if (word.description != null && word.description!.isNotEmpty)
               Text(
                 word.description!,

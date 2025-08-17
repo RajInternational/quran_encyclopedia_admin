@@ -4,6 +4,7 @@ import 'package:quizeapp/utils/ModelKeys.dart';
 class DictionaryWordData {
   String? id;
   String? arabicWord;
+  String? rootWord;
   String? description;
   String? reference;
   DateTime? createdAt;
@@ -12,6 +13,7 @@ class DictionaryWordData {
   DictionaryWordData({
     this.id,
     this.arabicWord,
+    this.rootWord,
     this.description,
     this.reference,
     this.createdAt,
@@ -22,6 +24,7 @@ class DictionaryWordData {
     return DictionaryWordData(
       id: json[CommonKeys.id],
       arabicWord: json['arabicWord'],
+      rootWord: json['rootWord'],
       description: json['description'],
       reference: json['reference'],
       createdAt: json[CommonKeys.createdAt] != null 
@@ -41,6 +44,7 @@ class DictionaryWordData {
     final Map<String, dynamic> data = <String, dynamic>{};
     data[CommonKeys.id] = id;
     data['arabicWord'] = arabicWord;
+    data['rootWord'] = rootWord;
     data['description'] = description;
     data['reference'] = reference;
     data[CommonKeys.createdAt] = createdAt?.toIso8601String();

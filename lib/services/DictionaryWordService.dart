@@ -70,15 +70,33 @@ class DictionaryWordService extends BaseService {
 
   Future<List<DictionaryWordData>> searchDictionaryWords(String searchTerm) async {
     try {
+      List<DictionaryWordData> results = [];
+      
       // Search in arabicWord field
-      QuerySnapshot snapshot = await ref!
+      QuerySnapshot arabicSnapshot = await ref!
           .where('arabicWord', isGreaterThanOrEqualTo: searchTerm)
           .where('arabicWord', isLessThan: searchTerm + '\uf8ff')
           .orderBy('arabicWord')
           .get();
       
-      return snapshot.docs.map((doc) => 
-          DictionaryWordData.fromJson(doc.data() as Map<String, dynamic>)).toList();
+      results.addAll(arabicSnapshot.docs.map((doc) => 
+          DictionaryWordData.fromJson(doc.data() as Map<String, dynamic>)));
+      
+      // Search in rootWord field
+      QuerySnapshot rootSnapshot = await ref!
+          .where('rootWord', isGreaterThanOrEqualTo: searchTerm)
+          .where('rootWord', isLessThan: searchTerm + '\uf8ff')
+          .orderBy('rootWord')
+          .get();
+      
+      results.addAll(rootSnapshot.docs.map((doc) => 
+          DictionaryWordData.fromJson(doc.data() as Map<String, dynamic>)));
+      
+      // Remove duplicates based on id
+      final uniqueResults = results.toSet().toList();
+      uniqueResults.sort((a, b) => (b.createdAt ?? DateTime.now()).compareTo(a.createdAt ?? DateTime.now()));
+      
+      return uniqueResults;
     } catch (e) {
       log('Error searching dictionary words: $e');
       return [];
