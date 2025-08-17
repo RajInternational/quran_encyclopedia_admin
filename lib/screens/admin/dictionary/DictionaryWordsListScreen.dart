@@ -16,7 +16,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class DictionaryWordsListScreen extends StatefulWidget {
   @override
-  _DictionaryWordsListScreenState createState() => _DictionaryWordsListScreenState();
+  _DictionaryWordsListScreenState createState() =>
+      _DictionaryWordsListScreenState();
 }
 
 class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
@@ -30,7 +31,7 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
   void initState() {
     super.initState();
     _loadTotalCount();
-    
+
     // Listen for when returning from Add Dictionary Word screen
     LiveStream().on('refreshDictionaryWords', (data) {
       if (mounted) {
@@ -59,7 +60,9 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Delete Word'),
-          content: Text('Are you sure you want to delete "${word.arabicWord}"?'),
+          content: Text(
+            'Are you sure you want to delete "${word.arabicWord}"?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -125,7 +128,10 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
             icon: Icon(Icons.add, color: Colors.white),
             onPressed: () {
               // Navigate to Add Dictionary Word screen using drawer navigation
-              LiveStream().emit('selectItem', 3); // Index 3 is "Add Dictionary Word"
+              LiveStream().emit(
+                'selectItem',
+                3,
+              ); // Index 3 is "Add Dictionary Word"
             },
             tooltip: 'Add New Word',
           ),
@@ -161,7 +167,10 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
                         hintText: 'Search Arabic words...',
                         prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -219,18 +228,12 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
                     children: [
                       Text(
                         'Total Dictionary Words',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       4.height,
                       Text(
                         '$_totalWords',
-                        style: boldTextStyle(
-                          size: 24,
-                          color: Colors.white,
-                        ),
+                        style: boldTextStyle(size: 24, color: Colors.white),
                       ),
                     ],
                   ),
@@ -241,9 +244,7 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
 
           // Paginated List
           Expanded(
-            child: _isSearching
-                ? _buildSearchResults()
-                : _buildPaginatedList(),
+            child: _isSearching ? _buildSearchResults() : _buildPaginatedList(),
           ),
         ],
       ),
@@ -252,7 +253,9 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
 
   Widget _buildPaginatedList() {
     // Build the query for pagination
-    Query query = db.collection('dictionary_words').orderBy('createdAt', descending: true);
+    Query query = db
+        .collection('dictionary_words')
+        .orderBy('createdAt', descending: true);
 
     return Column(
       children: [
@@ -272,8 +275,10 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
             itemBuilderType: PaginateBuilderType.listView,
             itemBuilder: (context, documentSnapshots, index) {
               final doc = documentSnapshots[index];
-              final word = DictionaryWordData.fromJson(doc.data() as Map<String, dynamic>);
-              
+              final word = DictionaryWordData.fromJson(
+                doc.data() as Map<String, dynamic>,
+              );
+
               return _buildWordCard(word);
             },
             onEmpty: Container(
@@ -307,7 +312,9 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
                         ),
                       ).then((_) {
                         if (context.mounted) {
-                          context.read<PaginationCubit>().refreshPaginatedList();
+                          context
+                              .read<PaginationCubit>()
+                              .refreshPaginatedList();
                           _loadTotalCount();
                         }
                       });
@@ -317,7 +324,10 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colorPrimary,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -476,7 +486,8 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
                           textDirection: ui.TextDirection.rtl,
                         ),
                       8.height,
-                      if (word.description != null && word.description!.isNotEmpty)
+                      if (word.description != null &&
+                          word.description!.isNotEmpty)
                         Text(
                           word.description!,
                           style: TextStyle(
@@ -501,7 +512,11 @@ class _DictionaryWordsListScreenState extends State<DictionaryWordsListScreen> {
                         color: colorPrimary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(Icons.translate, color: colorPrimary, size: 20),
+                      child: Icon(
+                        Icons.translate,
+                        color: colorPrimary,
+                        size: 20,
+                      ),
                     ),
                     8.height,
                     if (word.reference != null && word.reference!.isNotEmpty)
