@@ -5,6 +5,7 @@ import 'package:quizeapp/screens/admin/AdminDashboardScreen.dart';
 import 'package:quizeapp/services/AuthService.dart';
 import 'package:quizeapp/utils/Colors.dart';
 import 'package:quizeapp/utils/Common.dart';
+import 'package:quizeapp/utils/Constants.dart';
 
 import '../../main.dart';
 
@@ -18,11 +19,11 @@ class AdminDashboardScreenState extends State<AdminLoginScreen> {
 
   var formKey1 = GlobalKey<FormState>();
 
-  TextEditingController emailController = TextEditingController(text: '');
+  TextEditingController numberController = TextEditingController(text: '');
   TextEditingController passwordController = TextEditingController(text: '');
 
   FocusNode passFocus = FocusNode();
-  FocusNode emailFocus = FocusNode();
+  FocusNode numberFocus = FocusNode();
 
   @override
   void initState() {
@@ -39,30 +40,30 @@ class AdminDashboardScreenState extends State<AdminLoginScreen> {
       formKey1.currentState!.save();
       appStore.setLoading(true);
 
-      if (emailController.text == 'user@admin.com' &&
-          passwordController.text == 'User@Admin1234') {
+      // Login credentials: number = 741852, password = hamdani123
+      if (numberController.text.trim() == '741852' &&
+          passwordController.text == 'hamdani123') {
         toast('Logged In Successfully', length: Toast.LENGTH_LONG);
         appStore.setLoggedIn(true);
+        setValue(IS_LOGGED_IN, true);
+        setValue(USER_EMAIL, numberController.text.trim());
         AdminDashboardScreen().launch(context, isNewTask: true);
       } else {
-        toast('Invalid User', length: Toast.LENGTH_LONG);
+        toast('Invalid credentials. Please check your number and password.', length: Toast.LENGTH_LONG);
         appStore.setLoggedIn(false);
       }
-      // await signInWithEmail(emailController.text, passwordController.text)
-      //     .then((user) {
-      //   log(user.toJson());
-      //   if (user.isAdmin.validate() || user.isTestUser.validate()) {
-      //     AdminDashboardScreen().launch(context, isNewTask: true);
-      //   } else {
-      logout(context);
-      //     toast('You are not allowed to login');
-      //   }
-      // }).catchError((e) {
-      //   log(e);
-      //   toast(e.toString().splitAfter(']').trim());
-      // });
+      
       appStore.setLoading(false);
     }
+  }
+
+  @override
+  void dispose() {
+    numberController.dispose();
+    passwordController.dispose();
+    passFocus.dispose();
+    numberFocus.dispose();
+    super.dispose();
   }
 
   @override
@@ -76,7 +77,8 @@ class AdminDashboardScreenState extends State<AdminLoginScreen> {
       key: formKey,
       body: Container(
         alignment: Alignment.center,
-        width: 500,
+        constraints: BoxConstraints(maxWidth: 500),
+        padding: EdgeInsets.all(16),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -98,18 +100,31 @@ class AdminDashboardScreenState extends State<AdminLoginScreen> {
                     ),
                     20.height,
                     AppTextField(
-                      controller: emailController,
-                      textFieldType: TextFieldType.EMAIL,
-                      decoration: inputDecoration(labelText: 'email'),
+                      controller: numberController,
+                      textFieldType: TextFieldType.PHONE,
+                      decoration: inputDecoration(labelText: 'Number'),
                       nextFocus: passFocus,
                       autoFocus: true,
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Number is required';
+                        }
+                        return null;
+                      },
                     ),
                     8.height,
                     AppTextField(
                       controller: passwordController,
                       textFieldType: TextFieldType.PASSWORD,
                       focus: passFocus,
-                      decoration: inputDecoration(labelText: 'password'),
+                      decoration: inputDecoration(labelText: 'Password'),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Password is required';
+                        }
+                        return null;
+                      },
                       onFieldSubmitted: (s) {
                         signIn();
                       },

@@ -14,13 +14,13 @@ import 'package:quizeapp/services/SahihBukhariKitabService.dart';
 import 'package:quizeapp/services/SahihMuslimHadeesService.dart';
 import 'package:quizeapp/services/SahihMuslimKitabService.dart';
 import 'package:quizeapp/services/UserService.dart';
-import 'package:quizeapp/services/DictionaryWordService.dart';
+import 'package:quizeapp/services/RootWordsService.dart';
+import 'package:quizeapp/services/DictionaryWordsService.dart';
 import 'package:quizeapp/store/AppStore.dart';
 import 'package:quizeapp/utils/Colors.dart';
 import 'package:quizeapp/utils/Common.dart';
 import 'package:quizeapp/utils/Constants.dart';
 import 'package:url_strategy/url_strategy.dart';
-
 AppStore appStore = AppStore();
 
 FirebaseFirestore db = FirebaseFirestore.instance;
@@ -36,7 +36,8 @@ CategoryService categoryService = CategoryService();
 QuizServices quizServices = QuizServices();
 DailyQuizServices dailyQuizServices = DailyQuizServices();
 AppSettingService appSettingService = AppSettingService();
-DictionaryWordService dictionaryWordService = DictionaryWordService();
+RootWordsService rootWordsService = RootWordsService();
+DictionaryWordsService dictionaryWordsService = DictionaryWordsService();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,7 +59,7 @@ void main() async {
       OutlineInputBorder(borderSide: BorderSide(color: colorPrimary));
 
   appStore.setLanguage(getStringAsync(LANGUAGE, defaultValue: defaultLanguage));
-  // appStore.setLoggedIn(getBoolAsync(IS_LOGGED_IN));
+  appStore.setLoggedIn(getBoolAsync(IS_LOGGED_IN));
 
   if (appStore.isLoggedIn) {
     appStore.setUserId(getStringAsync(USER_ID));
@@ -136,3 +137,6 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
+
+

@@ -48,3 +48,13 @@ class AppSettingKeys {
   static String privacyPolicy = 'privacyPolicy';
   static String contactInfo = 'contactInfo';
 }
+
+class RootWordKeys {
+  static String rootWord = 'rootWord';
+  static String description = 'description';
+}
+
+class DictionaryWordKeys {
+  static String arabicWord = 'arabicWord';
+  static String rootHash = 'rootHash';
+}

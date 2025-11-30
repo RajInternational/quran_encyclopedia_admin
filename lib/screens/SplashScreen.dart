@@ -5,6 +5,7 @@ import 'package:quizeapp/utils/Constants.dart';
 
 import '../main.dart';
 import 'admin/AdminDashboardScreen.dart';
+import 'admin/AdminLoginScreen.dart';
 
 class SplashScreen extends StatefulWidget {
   static String tag = '/SplashScreen';
@@ -26,8 +27,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (appStore.isLoggedIn) {
       AdminDashboardScreen().launch(context, isNewTask: true);
     } else {
-      // AdminLoginScreen().launch(context, isNewTask: true);
-      AdminDashboardScreen().launch(context, isNewTask: true);
+      AdminLoginScreen().launch(context, isNewTask: true);
     }
   }
 
