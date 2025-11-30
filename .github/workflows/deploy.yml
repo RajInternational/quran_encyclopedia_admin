@@ -1,43 +1,38 @@
-name: Deploy Flutter Web to GitHub Pages
+name: Flutter Web CI/CD to GitHub Pages
 
 on:
   push:
     branches:
-      - main   # Auto-deploy whenever you push to main
+      - main  # Trigger workflow on main branch push
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-and-deploy:
+    name: Build & Deploy Flutter Web
+    runs-on: windows-latest
 
     steps:
-      - name: Checkout code
+      # Step 1: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0   # Needed so git commit works inside workflow
 
-      - name: Set up Flutter
+      # Step 2: Setup Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.32.0'  # Match your Flutter version
 
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Flutter build web
+      # Step 4: Build Flutter Web
+      - name: Build web
         run: flutter build web --base-href "/quran_encyclopedia_admin/"
 
-      - name: Prepare docs folder for GitHub Pages
-        run: |
-          rm -rf docs
-          mkdir docs
-          cp -r build/web/* docs/
-
-      - name: Commit updated docs folder
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add docs
-          git commit -m "CI/CD: Auto deploy latest Flutter Web build" || echo "No changes to commit"
-
-      - name: Push changes back to main
-        run: git push origin main
+      # Step 5: Deploy to GitHub Pages (gh-pages branch)
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v7
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
+          publish_branch: gh-pages
