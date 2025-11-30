@@ -10,33 +10,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout code
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # needed for gh-pages history
 
-      # Step 2: Setup Flutter SDK
+      # 2️⃣ Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.32.0'
           channel: stable
 
-      # Step 3: Ensure flutter is available in PATH
+      # 3️⃣ Verify Flutter
       - name: Verify Flutter
         run: flutter --version
 
-      # Step 4: Install dependencies using Flutter
+      # 4️⃣ Install dependencies
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      # Step 5: Build Flutter web
+      # 5️⃣ Build Flutter web
       - name: Build Flutter web
         run: flutter build web --base-href "/quran_encyclopedia_admin/"
 
-      # Step 6: Deploy to GitHub Pages
+      # 6️⃣ Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build/web
           publish_branch: gh-pages
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
