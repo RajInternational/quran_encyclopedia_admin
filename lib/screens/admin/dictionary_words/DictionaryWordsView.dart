@@ -22,14 +22,18 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
   final DictionaryWordsService _dictionaryWordsService = DictionaryWordsService();
   final RootWordsService _rootWordsService = RootWordsService();
   final TextEditingController _arabicWordController = TextEditingController();
+  final TextEditingController _rootWordSearchController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
   DictionaryWordModel? _editingWord;
   String? _selectedRootHash;
+  String? _selectedRootWordText;
   List<RootWordModel> _rootWords = [];
+  List<RootWordModel> _filteredRootWords = [];
   bool _isLoading = false;
   bool _showForm = false;
   bool _loadingRootWords = false;
+  bool _showRootWordSuggestions = false;
 
   @override
   void initState() {
@@ -40,6 +44,7 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
   @override
   void dispose() {
     _arabicWordController.dispose();
+    _rootWordSearchController.dispose();
     super.dispose();
   }
 
@@ -66,8 +71,12 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
 
   void _clearForm({bool hideForm = true}) {
     _arabicWordController.clear();
+    _rootWordSearchController.clear();
     _selectedRootHash = null;
+    _selectedRootWordText = null;
     _editingWord = null;
+    _filteredRootWords = [];
+    _showRootWordSuggestions = false;
     if (hideForm) {
       _showForm = false;
     }
@@ -78,7 +87,38 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
       _editingWord = word;
       _arabicWordController.text = word.arabicWord ?? '';
       _selectedRootHash = word.rootHash;
+      // Find and set the root word text
+      final rootWord = _rootWords.firstWhere(
+        (rw) => rw.id == word.rootHash,
+        orElse: () => RootWordModel(rootWord: 'Unknown'),
+      );
+      _selectedRootWordText = rootWord.rootWord;
+      _rootWordSearchController.text = rootWord.rootWord ?? '';
       _showForm = true;
+    });
+  }
+
+  void _filterRootWords(String query) {
+    setState(() {
+      if (query.trim().isEmpty) {
+        _filteredRootWords = [];
+        _showRootWordSuggestions = false;
+      } else {
+        _filteredRootWords = _rootWords
+            .where((rootWord) =>
+                rootWord.rootWord?.toLowerCase().contains(query.toLowerCase()) ?? false)
+            .toList();
+        _showRootWordSuggestions = _filteredRootWords.isNotEmpty;
+      }
+    });
+  }
+
+  void _selectRootWord(RootWordModel rootWord) {
+    setState(() {
+      _selectedRootHash = rootWord.id;
+      _selectedRootWordText = rootWord.rootWord;
+      _rootWordSearchController.text = rootWord.rootWord ?? '';
+      _showRootWordSuggestions = false;
     });
   }
 
@@ -238,26 +278,137 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
                       },
                     ),
                     16.height,
-                    DropdownButtonFormField<String>(
-                      value: _selectedRootHash,
-                      decoration: inputDecoration(labelText: 'Root Word *'),
-                      items: _rootWords.map((rootWord) {
-                        return DropdownMenuItem<String>(
-                          value: rootWord.id,
-                          child: Text(rootWord.rootWord ?? ''),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedRootHash = value;
-                        });
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Root word is required';
-                        }
-                        return null;
-                      },
+                    // Root Word Search Field
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppTextField(
+                          controller: _rootWordSearchController,
+                          textFieldType: TextFieldType.NAME,
+                          decoration: inputDecoration(
+                            labelText: 'Search Root Word *',
+                            hintText: 'Type to search root words...',
+                          ),
+                          onChanged: _filterRootWords,
+                          onTap: () {
+                            if (_rootWordSearchController.text.isEmpty) {
+                              setState(() {
+                                _filteredRootWords = _rootWords;
+                                _showRootWordSuggestions = _rootWords.isNotEmpty;
+                              });
+                            }
+                          },
+                          validator: (value) {
+                            if (_selectedRootHash == null || _selectedRootHash!.isEmpty) {
+                              return 'Please select a root word';
+                            }
+                            return null;
+                          },
+                          // suffixIcon: _selectedRootHash != null
+                          //     ? IconButton(
+                          //         icon: Icon(Icons.clear, color: Colors.grey),
+                          //         onPressed: () {
+                          //           setState(() {
+                          //             _selectedRootHash = null;
+                          //             _selectedRootWordText = null;
+                          //             _rootWordSearchController.clear();
+                          //             _showRootWordSuggestions = false;
+                          //           });
+                          //         },
+                          //       )
+                          //     : Icon(Icons.search, color: Colors.grey),
+                        ),
+                        // Suggestions List
+                        if (_showRootWordSuggestions && _filteredRootWords.isNotEmpty)
+                          Container(
+                            constraints: BoxConstraints(maxHeight: 200),
+                            margin: EdgeInsets.only(top: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: _filteredRootWords.length,
+                              itemBuilder: (context, index) {
+                                final rootWord = _filteredRootWords[index];
+                                return ListTile(
+                                  dense: true,
+                                  title: Text(
+                                    rootWord.rootWord ?? '',
+                                    style: primaryTextStyle(),
+                                  ),
+                                  subtitle: rootWord.description != null &&
+                                          rootWord.description!.isNotEmpty
+                                      ? Text(
+                                          rootWord.description!,
+                                          style: secondaryTextStyle(size: 12),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        )
+                                      : null,
+                                  onTap: () => _selectRootWord(rootWord),
+                                  hoverColor: colorPrimary.withOpacity(0.1),
+                                );
+                              },
+                            ),
+                          ),
+                        // Selected Root Word Display
+                        if (_selectedRootHash != null && _selectedRootWordText != null) ...[
+                          8.height,
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: colorPrimary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: colorPrimary.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.check_circle, color: colorPrimary, size: 20),
+                                8.width,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Selected: $_selectedRootWordText',
+                                        style: boldTextStyle(color: colorPrimary),
+                                      ),
+                                      if (_rootWords
+                                              .firstWhere(
+                                                (rw) => rw.id == _selectedRootHash,
+                                                orElse: () => RootWordModel(),
+                                              )
+                                              .description !=
+                                          null)
+                                        Text(
+                                          _rootWords
+                                              .firstWhere(
+                                                (rw) => rw.id == _selectedRootHash,
+                                                orElse: () => RootWordModel(),
+                                              )
+                                              .description!,
+                                          style: secondaryTextStyle(size: 12),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     16.height,
                     Row(
