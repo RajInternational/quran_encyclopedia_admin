@@ -3,12 +3,11 @@ name: Flutter Web CI/CD to GitHub Pages
 on:
   push:
     branches:
-      - main  # Trigger workflow on main branch push
+      - main
 
 jobs:
   build-and-deploy:
-    name: Build & Deploy Flutter Web
-    runs-on: windows-latest
+    runs-on: ubuntu-latest  # or windows-latest
 
     steps:
       # Step 1: Checkout code
@@ -19,21 +18,21 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.0'  # Match your Flutter version
+          flutter-version: '3.32.0'  # Use your Flutter version
+          channel: stable
 
       # Step 3: Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # Step 4: Build Flutter Web
+      # Step 4: Build Flutter web
       - name: Build web
         run: flutter build web --base-href "/quran_encyclopedia_admin/"
 
-      # Step 5: Deploy to GitHub Pages (gh-pages branch)
+      # Step 5: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build/web
           publish_branch: gh-pages
-
