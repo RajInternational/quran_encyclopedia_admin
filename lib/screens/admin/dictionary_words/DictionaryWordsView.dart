@@ -229,7 +229,7 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
                           child: AppButton(
                             text: _editingWord == null ? "Add Word" : "Update Word",
                             onTap: _isSaving ? null : _saveWord,
-                            color: colorPrimary,
+                            color: selectedDrawerViewColor,
                           ),
                         ),
                         10.width,
