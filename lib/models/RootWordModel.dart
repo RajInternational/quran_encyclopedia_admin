@@ -5,6 +5,7 @@ class RootWordModel {
   String? id;
   String? rootWord;
   String? description;
+  String? triLiteralWord;
   DateTime? createdAt;
   DateTime? updatedAt;
 
@@ -12,6 +13,7 @@ class RootWordModel {
     this.id,
     this.rootWord,
     this.description,
+    this.triLiteralWord,
     this.createdAt,
     this.updatedAt,
   });
@@ -21,6 +23,7 @@ class RootWordModel {
       id: json[CommonKeys.id],
       rootWord: json[RootWordKeys.rootWord],
       description: json[RootWordKeys.description],
+      triLiteralWord: json[RootWordKeys.triLiteralWord],
       createdAt: json[CommonKeys.createdAt] != null
           ? (json[CommonKeys.createdAt] as Timestamp).toDate()
           : null,
@@ -35,6 +38,7 @@ class RootWordModel {
     data[CommonKeys.id] = this.id;
     data[RootWordKeys.rootWord] = this.rootWord;
     data[RootWordKeys.description] = this.description;
+    data[RootWordKeys.triLiteralWord] = this.triLiteralWord;
     if (toStore) {
       data[CommonKeys.createdAt] = this.createdAt != null
           ? Timestamp.fromDate(this.createdAt!)

@@ -52,6 +52,7 @@ class AppSettingKeys {
 class RootWordKeys {
   static String rootWord = 'rootWord';
   static String description = 'description';
+  static String triLiteralWord = 'triLiteralWord';
 }
 
 class DictionaryWordKeys {

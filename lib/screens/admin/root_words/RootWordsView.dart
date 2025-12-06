@@ -19,6 +19,7 @@ class RootWordsView extends StatefulWidget {
 class _RootWordsViewState extends State<RootWordsView> {
   final RootWordsService _rootWordsService = RootWordsService();
   final TextEditingController _rootWordController = TextEditingController();
+  final TextEditingController _triliteralRootWordController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
@@ -30,12 +31,15 @@ class _RootWordsViewState extends State<RootWordsView> {
   void dispose() {
     _rootWordController.dispose();
     _descriptionController.dispose();
+    _triliteralRootWordController.dispose();
     super.dispose();
   }
 
   void _clearForm({bool hideForm = true}) {
     _rootWordController.clear();
     _descriptionController.clear();
+    _triliteralRootWordController.clear();
+
     _editingWord = null;
     if (hideForm) {
       _showForm = false;
@@ -47,6 +51,7 @@ class _RootWordsViewState extends State<RootWordsView> {
       _editingWord = word;
       _rootWordController.text = word.rootWord ?? '';
       _descriptionController.text = word.description ?? '';
+      _triliteralRootWordController.text=word.triLiteralWord ?? '' ;
       _showForm = true;
     });
   }
@@ -65,6 +70,8 @@ class _RootWordsViewState extends State<RootWordsView> {
         id: _editingWord?.id,
         rootWord: _rootWordController.text.trim(),
         description: _descriptionController.text.trim(),
+        triLiteralWord: _triliteralRootWordController.text.trim(),
+
       );
 
       if (_editingWord == null) {
@@ -197,6 +204,13 @@ class _RootWordsViewState extends State<RootWordsView> {
                       decoration: inputDecoration(labelText: 'Description'),
                     ),
                     16.height,
+                    AppTextField(
+                      controller: _triliteralRootWordController,
+                      textFieldType: TextFieldType.MULTILINE,
+                      maxLines: 3,
+                      decoration: inputDecoration(labelText: 'Triliteral Root'),
+                    ),
+                    16.height,
                     Row(
                       children: [
                         Expanded(
@@ -313,8 +327,8 @@ class _RootWordsViewState extends State<RootWordsView> {
           headingRowColor: MaterialStateProperty.all(colorPrimary.withOpacity(0.1)),
           columns: [
             DataColumn(label: Text('Root Word', style: boldTextStyle())),
-            DataColumn(label: Text('Description', style: boldTextStyle())),
-            DataColumn(label: Text('Created At', style: boldTextStyle())),
+            // DataColumn(label: Text('Description', style: boldTextStyle())),
+            // DataColumn(label: Text('Created At', style: boldTextStyle())),
             DataColumn(label: Text('Actions', style: boldTextStyle())),
           ],
           rows: rootWords.map((word) {
@@ -332,12 +346,23 @@ class _RootWordsViewState extends State<RootWordsView> {
                     ),
                   ),
                 ),
-                DataCell(Text(
-                  word.createdAt != null
-                      ? DateFormat('yyyy-MM-dd HH:mm').format(word.createdAt!)
-                      : 'N/A',
-                  style: secondaryTextStyle(size: 12),
-                )),
+                DataCell(
+                  Container(
+                    constraints: BoxConstraints(maxWidth: 300),
+                    child: Text(
+                      word.triLiteralWord ?? '',
+                      style: secondaryTextStyle(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                // DataCell(Text(
+                //   word.createdAt != null
+                //       ? DateFormat('yyyy-MM-dd HH:mm').format(word.createdAt!)
+                //       : 'N/A',
+                //   style: secondaryTextStyle(size: 12),
+                // )),
                 DataCell(
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -399,12 +424,16 @@ class _RootWordsViewState extends State<RootWordsView> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  8.height,
+                  Text(
+                    word.triLiteralWord ?? '',
+                    style: secondaryTextStyle(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
-                8.height,
-                Text(
-                  'Created: ${word.createdAt != null ? DateFormat('yyyy-MM-dd HH:mm').format(word.createdAt!) : 'N/A'}',
-                  style: secondaryTextStyle(size: 12),
-                ),
+                2.height,
+
               ],
             ),
             trailing: Row(
