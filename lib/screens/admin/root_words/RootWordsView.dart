@@ -188,7 +188,7 @@ class _RootWordsViewState extends State<RootWordsView> {
                       controller: _rootWordController,
                       textFieldType: TextFieldType.NAME,
                       decoration: inputDecoration(labelText: 'Root Word *'),
-                      enabled: _editingWord == null, // Can't edit root word once created
+                      // enabled: _editingWord == null, // Can't edit root word once created
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Root word is required';
