@@ -21,6 +21,10 @@ class _RootWordsViewState extends State<RootWordsView> {
   final TextEditingController _rootWordController = TextEditingController();
   final TextEditingController _triliteralRootWordController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _urduShortMeaningController = TextEditingController();
+  final TextEditingController _englishShortMeaningController = TextEditingController();
+  final TextEditingController _urduLongMeaningController = TextEditingController();
+  final TextEditingController _englishLongMeaningController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
   RootWordModel? _editingWord;
@@ -32,6 +36,10 @@ class _RootWordsViewState extends State<RootWordsView> {
     _rootWordController.dispose();
     _descriptionController.dispose();
     _triliteralRootWordController.dispose();
+    _urduShortMeaningController.dispose();
+    _englishShortMeaningController.dispose();
+    _urduLongMeaningController.dispose();
+    _englishLongMeaningController.dispose();
     super.dispose();
   }
 
@@ -39,6 +47,10 @@ class _RootWordsViewState extends State<RootWordsView> {
     _rootWordController.clear();
     _descriptionController.clear();
     _triliteralRootWordController.clear();
+    _urduShortMeaningController.clear();
+    _englishShortMeaningController.clear();
+    _urduLongMeaningController.clear();
+    _englishLongMeaningController.clear();
 
     _editingWord = null;
     if (hideForm) {
@@ -51,7 +63,11 @@ class _RootWordsViewState extends State<RootWordsView> {
       _editingWord = word;
       _rootWordController.text = word.rootWord ?? '';
       _descriptionController.text = word.description ?? '';
-      _triliteralRootWordController.text=word.triLiteralWord ?? '' ;
+      _triliteralRootWordController.text = word.triLiteralWord ?? '';
+      _urduShortMeaningController.text = word.urduShortMeaning ?? '';
+      _englishShortMeaningController.text = word.englishShortMeaning ?? '';
+      _urduLongMeaningController.text = word.urduLongMeaning ?? '';
+      _englishLongMeaningController.text = word.englishLongMeaning ?? '';
       _showForm = true;
     });
   }
@@ -71,6 +87,10 @@ class _RootWordsViewState extends State<RootWordsView> {
         rootWord: _rootWordController.text.trim(),
         description: _descriptionController.text.trim(),
         triLiteralWord: _triliteralRootWordController.text.trim(),
+        urduShortMeaning: _urduShortMeaningController.text.trim(),
+        englishShortMeaning: _englishShortMeaningController.text.trim(),
+        urduLongMeaning: _urduLongMeaningController.text.trim(),
+        englishLongMeaning: _englishLongMeaningController.text.trim(),
 
       );
 
@@ -153,99 +173,135 @@ class _RootWordsViewState extends State<RootWordsView> {
         children: [
           // Form Section
           if (_showForm)
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _editingWord == null ? 'Add Root Word' : 'Edit Root Word',
-                          style: boldTextStyle(size: 18),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.close),
-                          onPressed: () => setState(() => _clearForm(hideForm: true)),
-                        ),
-                      ],
-                    ),
-                    16.height,
-                    AppTextField(
-                      controller: _rootWordController,
-                      textFieldType: TextFieldType.NAME,
-                      decoration: inputDecoration(labelText: 'Root Word *'),
-                      // enabled: _editingWord == null, // Can't edit root word once created
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Root word is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    16.height,
-                    AppTextField(
-                      controller: _descriptionController,
-                      textFieldType: TextFieldType.MULTILINE,
-                      maxLines: 3,
-                      decoration: inputDecoration(labelText: 'Description'),
-                    ),
-                    16.height,
-                    AppTextField(
-                      controller: _triliteralRootWordController,
-                      textFieldType: TextFieldType.MULTILINE,
-                      maxLines: 3,
-                      decoration: inputDecoration(labelText: 'Triliteral Root'),
-                    ),
-                    16.height,
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AppButton(
-                            text: _editingWord == null ? 'Add Root Word' : 'Update Root Word',
-                            textStyle: boldTextStyle(color: white),
-                            color: colorPrimary,
-                            onTap: _isLoading ? null : _saveRootWord,
-                          ),
-                        ),
-                        12.width,
-                        Expanded(
-                          child: AppButton(
-                            text: 'Cancel',
-                            textStyle: boldTextStyle(color: colorPrimary),
-                            color: Colors.white,
-                            onTap: () => setState(() => _clearForm(hideForm: true)),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_isLoading) ...[
-                      16.height,
-                      Center(child: CircularProgressIndicator()),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: Offset(0, 2),
+                      ),
                     ],
-                  ],
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _editingWord == null ? 'Add Root Word' : 'Edit Root Word',
+                                style: boldTextStyle(size: 18),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.close),
+                                onPressed: () => setState(() => _clearForm(hideForm: true)),
+                              ),
+                            ],
+                          ),
+                          16.height,
+                          AppTextField(
+                            controller: _rootWordController,
+                            textFieldType: TextFieldType.NAME,
+                            decoration: inputDecoration(labelText: 'Root Word *'),
+                            // enabled: _editingWord == null, // Can't edit root word once created
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Root word is required';
+                              }
+                              return null;
+                            },
+                          ),
+                          16.height,
+                          AppTextField(
+                            controller: _descriptionController,
+                            textFieldType: TextFieldType.MULTILINE,
+                            maxLines: 3,
+                            decoration: inputDecoration(labelText: 'Description'),
+                          ),
+                          16.height,
+                          AppTextField(
+                            controller: _triliteralRootWordController,
+                            textFieldType: TextFieldType.MULTILINE,
+                            maxLines: 3,
+                            decoration: inputDecoration(labelText: 'Triliteral Root'),
+                          ),
+                          16.height,
+                          AppTextField(
+                            controller: _urduShortMeaningController,
+                            textFieldType: TextFieldType.MULTILINE,
+                            maxLines: 2,
+                            decoration: inputDecoration(labelText: 'Urdu Short Meaning'),
+                          ),
+                          16.height,
+                          AppTextField(
+                            controller: _englishShortMeaningController,
+                            textFieldType: TextFieldType.MULTILINE,
+                            maxLines: 2,
+                            decoration: inputDecoration(labelText: 'English Short Meaning'),
+                          ),
+                          16.height,
+                          AppTextField(
+                            controller: _urduLongMeaningController,
+                            textFieldType: TextFieldType.MULTILINE,
+                            maxLines: 3,
+                            decoration: inputDecoration(labelText: 'Urdu Long Meaning'),
+                          ),
+                          16.height,
+                          AppTextField(
+                            controller: _englishLongMeaningController,
+                            textFieldType: TextFieldType.MULTILINE,
+                            maxLines: 3,
+                            decoration: inputDecoration(labelText: 'English Long Meaning'),
+                          ),
+                          16.height,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: AppButton(
+                                  text: _editingWord == null ? 'Add Root Word' : 'Update Root Word',
+                                  textStyle: boldTextStyle(color: white),
+                                  color: colorPrimary,
+                                  onTap: _isLoading ? null : _saveRootWord,
+                                ),
+                              ),
+                              12.width,
+                              Expanded(
+                                child: AppButton(
+                                  text: 'Cancel',
+                                  textStyle: boldTextStyle(color: colorPrimary),
+                                  color: Colors.white,
+                                  onTap: () => setState(() => _clearForm(hideForm: true)),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_isLoading) ...[
+                            16.height,
+                            Center(child: CircularProgressIndicator()),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
 
           // List Section
-          Expanded(
-            child: StreamBuilder<List<RootWordModel>>(
-              stream: _rootWordsService.streamRootWords(),
-              builder: (context, snapshot) {
+          if (!_showForm)
+            Expanded(
+              child: StreamBuilder<List<RootWordModel>>(
+                stream: _rootWordsService.streamRootWords(),
+                builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(
                     child: Column(
@@ -327,8 +383,11 @@ class _RootWordsViewState extends State<RootWordsView> {
           headingRowColor: MaterialStateProperty.all(colorPrimary.withOpacity(0.1)),
           columns: [
             DataColumn(label: Text('Root Word', style: boldTextStyle())),
-            DataColumn(label: Text('Description', style: boldTextStyle())),
-            DataColumn(label: Text('Triliteral Root', style: boldTextStyle())),
+            DataColumn(label: Text('Trilateral Root', style: boldTextStyle())),
+            DataColumn(label: Text('Urdu Short', style: boldTextStyle())),
+            DataColumn(label: Text('English Short', style: boldTextStyle())),
+            DataColumn(label: Text('Urdu Long', style: boldTextStyle())),
+            DataColumn(label: Text('English Long', style: boldTextStyle())),
             // DataColumn(label: Text('Created At', style: boldTextStyle())),
             DataColumn(label: Text('Actions', style: boldTextStyle())),
           ],
@@ -340,7 +399,7 @@ class _RootWordsViewState extends State<RootWordsView> {
                   Container(
                     constraints: BoxConstraints(maxWidth: 300),
                     child: Text(
-                      word.description ?? '',
+                      word.triLiteralWord ?? '',
                       style: secondaryTextStyle(),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -351,7 +410,40 @@ class _RootWordsViewState extends State<RootWordsView> {
                   Container(
                     constraints: BoxConstraints(maxWidth: 300),
                     child: Text(
-                      word.triLiteralWord ?? '',
+                      word.urduShortMeaning ?? '',
+                      style: secondaryTextStyle(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    constraints: BoxConstraints(maxWidth: 300),
+                    child: Text(
+                      word.englishShortMeaning ?? '',
+                      style: secondaryTextStyle(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    constraints: BoxConstraints(maxWidth: 300),
+                    child: Text(
+                      word.urduLongMeaning ?? '',
+                      style: secondaryTextStyle(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    constraints: BoxConstraints(maxWidth: 300),
+                    child: Text(
+                      word.englishLongMeaning ?? '',
                       style: secondaryTextStyle(),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -417,23 +509,51 @@ class _RootWordsViewState extends State<RootWordsView> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (word.description != null && word.description!.isNotEmpty) ...[
+                if (word.triLiteralWord.validate().isNotEmpty) ...[
                   8.height,
                   Text(
-                    word.description!,
-                    style: secondaryTextStyle(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  8.height,
-                  Text(
-                    word.triLiteralWord ?? '',
+                    'Trilateral Root: ${word.triLiteralWord}',
                     style: secondaryTextStyle(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-                2.height,
+                if (word.urduShortMeaning.validate().isNotEmpty) ...[
+                  8.height,
+                  Text(
+                    'Urdu Short: ${word.urduShortMeaning}',
+                    style: secondaryTextStyle(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (word.englishShortMeaning.validate().isNotEmpty) ...[
+                  8.height,
+                  Text(
+                    'English Short: ${word.englishShortMeaning}',
+                    style: secondaryTextStyle(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (word.urduLongMeaning.validate().isNotEmpty) ...[
+                  8.height,
+                  Text(
+                    'Urdu Long: ${word.urduLongMeaning}',
+                    style: secondaryTextStyle(),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (word.englishLongMeaning.validate().isNotEmpty) ...[
+                  8.height,
+                  Text(
+                    'English Long: ${word.englishLongMeaning}',
+                    style: secondaryTextStyle(),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
 
               ],
             ),

@@ -53,6 +53,10 @@ class RootWordKeys {
   static String rootWord = 'rootWord';
   static String description = 'description';
   static String triLiteralWord = 'triLiteralWord';
+  static String urduShortMeaning = 'urduShortMeaning';
+  static String englishShortMeaning = 'englishShortMeaning';
+  static String urduLongMeaning = 'urduLongMeaning';
+  static String englishLongMeaning = 'englishLongMeaning';
 }
 
 class DictionaryWordKeys {

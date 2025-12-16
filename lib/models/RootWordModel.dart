@@ -6,6 +6,10 @@ class RootWordModel {
   String? rootWord;
   String? description;
   String? triLiteralWord;
+  String? urduShortMeaning;
+  String? englishShortMeaning;
+  String? urduLongMeaning;
+  String? englishLongMeaning;
   DateTime? createdAt;
   DateTime? updatedAt;
 
@@ -14,6 +18,10 @@ class RootWordModel {
     this.rootWord,
     this.description,
     this.triLiteralWord,
+    this.urduShortMeaning,
+    this.englishShortMeaning,
+    this.urduLongMeaning,
+    this.englishLongMeaning,
     this.createdAt,
     this.updatedAt,
   });
@@ -24,6 +32,10 @@ class RootWordModel {
       rootWord: json[RootWordKeys.rootWord],
       description: json[RootWordKeys.description],
       triLiteralWord: json[RootWordKeys.triLiteralWord],
+      urduShortMeaning: json[RootWordKeys.urduShortMeaning],
+      englishShortMeaning: json[RootWordKeys.englishShortMeaning],
+      urduLongMeaning: json[RootWordKeys.urduLongMeaning],
+      englishLongMeaning: json[RootWordKeys.englishLongMeaning],
       createdAt: json[CommonKeys.createdAt] != null
           ? (json[CommonKeys.createdAt] as Timestamp).toDate()
           : null,
@@ -39,6 +51,10 @@ class RootWordModel {
     data[RootWordKeys.rootWord] = this.rootWord;
     data[RootWordKeys.description] = this.description;
     data[RootWordKeys.triLiteralWord] = this.triLiteralWord;
+    data[RootWordKeys.urduShortMeaning] = this.urduShortMeaning;
+    data[RootWordKeys.englishShortMeaning] = this.englishShortMeaning;
+    data[RootWordKeys.urduLongMeaning] = this.urduLongMeaning;
+    data[RootWordKeys.englishLongMeaning] = this.englishLongMeaning;
     if (toStore) {
       data[CommonKeys.createdAt] = this.createdAt != null
           ? Timestamp.fromDate(this.createdAt!)
