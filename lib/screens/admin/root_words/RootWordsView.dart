@@ -327,7 +327,8 @@ class _RootWordsViewState extends State<RootWordsView> {
           headingRowColor: MaterialStateProperty.all(colorPrimary.withOpacity(0.1)),
           columns: [
             DataColumn(label: Text('Root Word', style: boldTextStyle())),
-            // DataColumn(label: Text('Description', style: boldTextStyle())),
+            DataColumn(label: Text('Description', style: boldTextStyle())),
+            DataColumn(label: Text('Triliteral Root', style: boldTextStyle())),
             // DataColumn(label: Text('Created At', style: boldTextStyle())),
             DataColumn(label: Text('Actions', style: boldTextStyle())),
           ],
