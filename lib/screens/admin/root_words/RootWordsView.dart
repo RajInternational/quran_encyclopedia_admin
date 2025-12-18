@@ -30,6 +30,13 @@ class _RootWordsViewState extends State<RootWordsView> {
   RootWordModel? _editingWord;
   bool _isLoading = false;
   bool _showForm = false;
+  final ScrollController _horizontalScrollController = ScrollController();
+  final ScrollController _verticalScrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   void dispose() {
@@ -40,6 +47,8 @@ class _RootWordsViewState extends State<RootWordsView> {
     _englishShortMeaningController.dispose();
     _urduLongMeaningController.dispose();
     _englishLongMeaningController.dispose();
+    _horizontalScrollController.dispose();
+    _verticalScrollController.dispose();
     super.dispose();
   }
 
@@ -213,6 +222,8 @@ class _RootWordsViewState extends State<RootWordsView> {
                             textFieldType: TextFieldType.NAME,
                             decoration: inputDecoration(labelText: 'Root Word *'),
                             // enabled: _editingWord == null, // Can't edit root word once created
+                            // Keep ONLY this field required
+                            isValidationRequired: false,
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Root word is required';
@@ -226,6 +237,8 @@ class _RootWordsViewState extends State<RootWordsView> {
                             textFieldType: TextFieldType.MULTILINE,
                             maxLines: 3,
                             decoration: inputDecoration(labelText: 'Description'),
+                            isValidationRequired: false,
+                            validator: (_) => null,
                           ),
                           16.height,
                           AppTextField(
@@ -233,6 +246,8 @@ class _RootWordsViewState extends State<RootWordsView> {
                             textFieldType: TextFieldType.MULTILINE,
                             maxLines: 3,
                             decoration: inputDecoration(labelText: 'Triliteral Root'),
+                            isValidationRequired: false,
+                            validator: (_) => null,
                           ),
                           16.height,
                           AppTextField(
@@ -240,6 +255,8 @@ class _RootWordsViewState extends State<RootWordsView> {
                             textFieldType: TextFieldType.MULTILINE,
                             maxLines: 2,
                             decoration: inputDecoration(labelText: 'Urdu Short Meaning'),
+                            isValidationRequired: false,
+                            validator: (_) => null,
                           ),
                           16.height,
                           AppTextField(
@@ -247,6 +264,8 @@ class _RootWordsViewState extends State<RootWordsView> {
                             textFieldType: TextFieldType.MULTILINE,
                             maxLines: 2,
                             decoration: inputDecoration(labelText: 'English Short Meaning'),
+                            isValidationRequired: false,
+                            validator: (_) => null,
                           ),
                           16.height,
                           AppTextField(
@@ -254,6 +273,8 @@ class _RootWordsViewState extends State<RootWordsView> {
                             textFieldType: TextFieldType.MULTILINE,
                             maxLines: 3,
                             decoration: inputDecoration(labelText: 'Urdu Long Meaning'),
+                            isValidationRequired: false,
+                            validator: (_) => null,
                           ),
                           16.height,
                           AppTextField(
@@ -261,6 +282,8 @@ class _RootWordsViewState extends State<RootWordsView> {
                             textFieldType: TextFieldType.MULTILINE,
                             maxLines: 3,
                             decoration: inputDecoration(labelText: 'English Long Meaning'),
+                            isValidationRequired: false,
+                            validator: (_) => null,
                           ),
                           16.height,
                           Row(
@@ -376,205 +399,422 @@ class _RootWordsViewState extends State<RootWordsView> {
   }
 
   Widget _buildDataTable(List<RootWordModel> rootWords) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: DataTable(
-          headingRowColor: MaterialStateProperty.all(colorPrimary.withOpacity(0.1)),
-          columns: [
-            DataColumn(label: Text('Root Word', style: boldTextStyle())),
-            DataColumn(label: Text('Trilateral Root', style: boldTextStyle())),
-            DataColumn(label: Text('Urdu Short', style: boldTextStyle())),
-            DataColumn(label: Text('English Short', style: boldTextStyle())),
-            DataColumn(label: Text('Urdu Long', style: boldTextStyle())),
-            DataColumn(label: Text('English Long', style: boldTextStyle())),
-            // DataColumn(label: Text('Created At', style: boldTextStyle())),
-            DataColumn(label: Text('Actions', style: boldTextStyle())),
-          ],
-          rows: rootWords.map((word) {
-            return DataRow(
-              cells: [
-                DataCell(Text(word.rootWord ?? '', style: primaryTextStyle())),
-                DataCell(
-                  Container(
-                    constraints: BoxConstraints(maxWidth: 300),
-                    child: Text(
-                      word.triLiteralWord ?? '',
-                      style: secondaryTextStyle(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header with count and scroll hint
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: colorPrimary.withOpacity(0.05),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total Root Words: ${rootWords.length}',
+                  style: boldTextStyle(size: 14, color: colorPrimary),
                 ),
-                DataCell(
-                  Container(
-                    constraints: BoxConstraints(maxWidth: 300),
-                    child: Text(
-                      word.urduShortMeaning ?? '',
-                      style: secondaryTextStyle(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Icon(Icons.swap_horiz, size: 18, color: Colors.grey[600]),
+                    8.width,
+                    Text(
+                      'Scroll horizontally',
+                      style: secondaryTextStyle(size: 12, color: Colors.grey[600]),
                     ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    constraints: BoxConstraints(maxWidth: 300),
-                    child: Text(
-                      word.englishShortMeaning ?? '',
-                      style: secondaryTextStyle(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    constraints: BoxConstraints(maxWidth: 300),
-                    child: Text(
-                      word.urduLongMeaning ?? '',
-                      style: secondaryTextStyle(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    constraints: BoxConstraints(maxWidth: 300),
-                    child: Text(
-                      word.englishLongMeaning ?? '',
-                      style: secondaryTextStyle(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                // DataCell(Text(
-                //   word.createdAt != null
-                //       ? DateFormat('yyyy-MM-dd HH:mm').format(word.createdAt!)
-                //       : 'N/A',
-                //   style: secondaryTextStyle(size: 12),
-                // )),
-                DataCell(
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.edit, color: colorPrimary, size: 20),
-                        onPressed: () => _editWord(word),
-                        tooltip: 'Edit',
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red, size: 20),
-                        onPressed: () => _deleteWord(word),
-                        tooltip: 'Delete',
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ],
-            );
-          }).toList(),
-        ),
+            ),
+          ),
+          // Scrollable table
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Scrollbar(
+                  controller: _horizontalScrollController,
+                  thumbVisibility: true,
+                  thickness: 6,
+                  radius: Radius.circular(3),
+                  child: SingleChildScrollView(
+                    controller: _horizontalScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                      child: SingleChildScrollView(
+                        controller: _verticalScrollController,
+                        scrollDirection: Axis.vertical,
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: DataTable(
+                      headingRowColor: MaterialStateProperty.all(colorPrimary.withOpacity(0.1)),
+                      columnSpacing: 20,
+                      horizontalMargin: 12,
+                      dataRowMinHeight: 60,
+                      dataRowMaxHeight: 120,
+                      columns: [
+                        DataColumn(
+                          label: Container(
+                            constraints: BoxConstraints(minWidth: 150),
+                            child: Text('Root Word', style: boldTextStyle(size: 14)),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Container(
+                            constraints: BoxConstraints(minWidth: 180),
+                            child: Text('Trilateral Root', style: boldTextStyle(size: 14)),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Container(
+                            constraints: BoxConstraints(minWidth: 180),
+                            child: Text('Urdu Short', style: boldTextStyle(size: 14)),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Container(
+                            constraints: BoxConstraints(minWidth: 180),
+                            child: Text('English Short', style: boldTextStyle(size: 14)),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Container(
+                            constraints: BoxConstraints(minWidth: 220),
+                            child: Text('Urdu Long', style: boldTextStyle(size: 14)),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Container(
+                            constraints: BoxConstraints(minWidth: 220),
+                            child: Text('English Long', style: boldTextStyle(size: 14)),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Container(
+                            constraints: BoxConstraints(minWidth: 120),
+                            child: Text('Actions', style: boldTextStyle(size: 14)),
+                          ),
+                        ),
+                      ],
+                      rows: rootWords.map((word) {
+                        return DataRow(
+                          color: MaterialStateProperty.resolveWith<Color>(
+                            (Set<MaterialState> states) {
+                              if (states.contains(MaterialState.hovered)) {
+                                return colorPrimary.withOpacity(0.05);
+                              }
+                              return Colors.transparent;
+                            },
+                          ),
+                          cells: [
+                            DataCell(
+                              Container(
+                                constraints: BoxConstraints(minWidth: 150, maxWidth: 200),
+                                child: Text(
+                                  word.rootWord ?? '-',
+                                  style: primaryTextStyle().copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: colorPrimary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Container(
+                                constraints: BoxConstraints(minWidth: 180, maxWidth: 250),
+                                child: Text(
+                                  word.triLiteralWord?.isEmpty ?? true ? '-' : word.triLiteralWord!,
+                                  style: secondaryTextStyle(),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Container(
+                                constraints: BoxConstraints(minWidth: 180, maxWidth: 250),
+                                child: Text(
+                                  word.urduShortMeaning?.isEmpty ?? true ? '-' : word.urduShortMeaning!,
+                                  style: secondaryTextStyle(),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Container(
+                                constraints: BoxConstraints(minWidth: 180, maxWidth: 250),
+                                child: Text(
+                                  word.englishShortMeaning?.isEmpty ?? true ? '-' : word.englishShortMeaning!,
+                                  style: secondaryTextStyle(),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Container(
+                                constraints: BoxConstraints(minWidth: 220, maxWidth: 300),
+                                child: Text(
+                                  word.urduLongMeaning?.isEmpty ?? true ? '-' : word.urduLongMeaning!,
+                                  style: secondaryTextStyle(),
+                                  maxLines: 4,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Container(
+                                constraints: BoxConstraints(minWidth: 220, maxWidth: 300),
+                                child: Text(
+                                  word.englishLongMeaning?.isEmpty ?? true ? '-' : word.englishLongMeaning!,
+                                  style: secondaryTextStyle(),
+                                  maxLines: 4,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Container(
+                                constraints: BoxConstraints(minWidth: 120),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: colorPrimary.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: IconButton(
+                                        icon: Icon(Icons.edit, color: colorPrimary, size: 20),
+                                        onPressed: () => _editWord(word),
+                                        tooltip: 'Edit',
+                                        padding: EdgeInsets.all(8),
+                                        constraints: BoxConstraints(minWidth: 36, minHeight: 36),
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: IconButton(
+                                        icon: Icon(Icons.delete, color: Colors.red, size: 20),
+                                        onPressed: () => _deleteWord(word),
+                                        tooltip: 'Delete',
+                                        padding: EdgeInsets.all(8),
+                                        constraints: BoxConstraints(minWidth: 36, minHeight: 36),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildListView(List<RootWordModel> rootWords) {
-    return ListView.builder(
-      padding: EdgeInsets.all(16),
-      itemCount: rootWords.length,
-      itemBuilder: (context, index) {
-        final word = rootWords[index];
-        return Container(
-          margin: EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: Offset(0, 2),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header with count
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: colorPrimary.withOpacity(0.05),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
               ),
-            ],
-          ),
-          child: ListTile(
-            contentPadding: EdgeInsets.all(16),
-            title: Text(
-              word.rootWord ?? '',
-              style: boldTextStyle(size: 16, color: colorPrimary),
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (word.triLiteralWord.validate().isNotEmpty) ...[
-                  8.height,
-                  Text(
-                    'Trilateral Root: ${word.triLiteralWord}',
-                    style: secondaryTextStyle(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                Text(
+                  'Total Root Words: ${rootWords.length}',
+                  style: boldTextStyle(size: 14, color: colorPrimary),
+                ),
+              ],
+            ),
+          ),
+          // List items
+          Expanded(
+            child: ListView.builder(
+              padding: EdgeInsets.all(16),
+              itemCount: rootWords.length,
+              itemBuilder: (context, index) {
+                final word = rootWords[index];
+                return Container(
+                  margin: EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
-                if (word.urduShortMeaning.validate().isNotEmpty) ...[
-                  8.height,
-                  Text(
-                    'Urdu Short: ${word.urduShortMeaning}',
-                    style: secondaryTextStyle(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: ExpansionTile(
+                    tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    childrenPadding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: colorPrimary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          (index + 1).toString(),
+                          style: boldTextStyle(size: 14, color: colorPrimary),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      word.rootWord ?? '',
+                      style: boldTextStyle(size: 16, color: colorPrimary),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colorPrimary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.edit, color: colorPrimary, size: 20),
+                            onPressed: () => _editWord(word),
+                            tooltip: 'Edit',
+                            padding: EdgeInsets.all(8),
+                            constraints: BoxConstraints(minWidth: 36, minHeight: 36),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.delete, color: Colors.red, size: 20),
+                            onPressed: () => _deleteWord(word),
+                            tooltip: 'Delete',
+                            padding: EdgeInsets.all(8),
+                            constraints: BoxConstraints(minWidth: 36, minHeight: 36),
+                          ),
+                        ),
+                      ],
+                    ),
+                    children: [
+                      if (word.triLiteralWord.validate().isNotEmpty) ...[
+                        _buildInfoRow('Trilateral Root', word.triLiteralWord ?? ''),
+                      ],
+                      if (word.urduShortMeaning.validate().isNotEmpty) ...[
+                        _buildInfoRow('Urdu Short Meaning', word.urduShortMeaning ?? ''),
+                      ],
+                      if (word.englishShortMeaning.validate().isNotEmpty) ...[
+                        _buildInfoRow('English Short Meaning', word.englishShortMeaning ?? ''),
+                      ],
+                      if (word.urduLongMeaning.validate().isNotEmpty) ...[
+                        _buildInfoRow('Urdu Long Meaning', word.urduLongMeaning ?? ''),
+                      ],
+                      if (word.englishLongMeaning.validate().isNotEmpty) ...[
+                        _buildInfoRow('English Long Meaning', word.englishLongMeaning ?? ''),
+                      ],
+                      if (word.description.validate().isNotEmpty) ...[
+                        _buildInfoRow('Description', word.description ?? ''),
+                      ],
+                    ],
                   ),
-                ],
-                if (word.englishShortMeaning.validate().isNotEmpty) ...[
-                  8.height,
-                  Text(
-                    'English Short: ${word.englishShortMeaning}',
-                    style: secondaryTextStyle(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                if (word.urduLongMeaning.validate().isNotEmpty) ...[
-                  8.height,
-                  Text(
-                    'Urdu Long: ${word.urduLongMeaning}',
-                    style: secondaryTextStyle(),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                if (word.englishLongMeaning.validate().isNotEmpty) ...[
-                  8.height,
-                  Text(
-                    'English Long: ${word.englishLongMeaning}',
-                    style: secondaryTextStyle(),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-              ],
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: boldTextStyle(size: 12, color: Colors.grey[600]!),
+          ),
+          4.height,
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[200]!),
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.edit, color: colorPrimary),
-                  onPressed: () => _editWord(word),
-                  tooltip: 'Edit',
-                ),
-                IconButton(
-                  icon: Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _deleteWord(word),
-                  tooltip: 'Delete',
-                ),
-              ],
+            child: Text(
+              value,
+              style: secondaryTextStyle(),
             ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
