@@ -73,6 +73,38 @@ class RootWordsService extends BaseService {
             .toList());
   }
 
+  /// Search root words by rootWord, triLiteralWord, or description (contains, case-insensitive)
+  /// Fetches up to [fetchLimit] from Firestore and filters client-side
+  Future<List<RootWordModel>> searchRootWords(
+    String query, {
+    int limit = 30,
+    int fetchLimit = 500,
+  }) async {
+    if (query.trim().isEmpty) return [];
+    final q = query.trim().toLowerCase();
+    final snapshot = await ref!
+        .orderBy(CommonKeys.createdAt, descending: true)
+        .limit(fetchLimit)
+        .get();
+    final all = snapshot.docs
+        .map((y) => RootWordModel.fromJson(
+            y.data() as Map<String, dynamic>..[CommonKeys.id] = y.id))
+        .toList();
+    final matches = all.where((w) {
+      final rw = (w.rootWord ?? '').toLowerCase();
+      final tri = (w.triLiteralWord ?? '').toLowerCase();
+      final desc = (w.description ?? '').toLowerCase();
+      final urduShort = (w.urduShortMeaning ?? '').toLowerCase();
+      final engShort = (w.englishShortMeaning ?? '').toLowerCase();
+      return rw.contains(q) ||
+          tri.contains(q) ||
+          desc.contains(q) ||
+          urduShort.contains(q) ||
+          engShort.contains(q);
+    }).take(limit).toList();
+    return matches;
+  }
+
   /// Check if root word exists
   Future<bool> rootWordExists(String rootWord) async {
     String id = generateId(rootWord);

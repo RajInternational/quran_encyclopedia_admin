@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -50,7 +51,13 @@ class _RootWordsViewState extends State<RootWordsView> {
   int _totalCount = 0;
   Map<int, DocumentSnapshot?> _pageCursors = {};
   final TextEditingController _pageController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   static const int _itemsPerPage = 15;
+
+  /// Search state
+  List<RootWordModel> _searchResults = [];
+  bool _isSearching = false;
+  Timer? _searchDebounceTimer;
 
   /// Active controller for Urdu keyboard input
   TextEditingController? _activeKeyboardController;
@@ -108,6 +115,8 @@ class _RootWordsViewState extends State<RootWordsView> {
     _urduLongMeaningController.dispose();
     _englishLongMeaningController.dispose();
     _pageController.dispose();
+    _searchController.dispose();
+    _searchDebounceTimer?.cancel();
     
     _rootWordFocus.dispose();
     _triliteralFocus.dispose();
@@ -164,8 +173,45 @@ class _RootWordsViewState extends State<RootWordsView> {
     }
   }
 
+  /// Search root words with debounce
+  void _searchRootWords(String query) {
+    _searchDebounceTimer?.cancel();
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+    _searchDebounceTimer = Timer(Duration(milliseconds: 300), () async {
+      setState(() => _isSearching = true);
+      try {
+        final results = await _rootWordsService.searchRootWords(query, limit: 30);
+        if (mounted) {
+          setState(() {
+            _searchResults = results;
+            _isSearching = false;
+          });
+        }
+      } catch (e) {
+        log('Error searching root words: $e');
+        if (mounted) {
+          setState(() {
+            _searchResults = [];
+            _isSearching = false;
+          });
+        }
+      }
+    });
+  }
+
   void _clearForm({bool hideForm = true}) {
     _activeKeyboardController = null;
+    if (!hideForm) {
+      // Opening add form - clear search
+      _searchController.clear();
+      _searchResults = [];
+    }
     _rootWordController.clear();
     _descriptionController.clear();
     _triliteralRootWordController.clear();
@@ -673,7 +719,7 @@ class _RootWordsViewState extends State<RootWordsView> {
             ),
           ),
 
-          // List Section with pagination (like subject_detail_screen)
+          // List Section with pagination and search
           if (!_showForm)
             Expanded(
               child: _loading
@@ -689,58 +735,109 @@ class _RootWordsViewState extends State<RootWordsView> {
                     )
                   : Column(
                       children: [
-                        // Pagination info
-                        Container(
-                          padding: EdgeInsets.all(8),
-                          child: Text(
-                            'Page $_selectedPage of ${_totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil()} - Showing ${_rootWords.length} (Total: $_totalCount)',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        // Search field
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          child: AppTextField(
+                            controller: _searchController,
+                            textFieldType: TextFieldType.OTHER,
+                            decoration: InputDecoration(
+                              hintText: 'Search root word, tri-literal, description...',
+                              prefixIcon: Icon(Icons.search),
+                              suffixIcon: _searchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: Icon(Icons.clear, size: 20),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() {
+                                          _searchResults = [];
+                                          _isSearching = false;
+                                        });
+                                      },
+                                    )
+                                  : null,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                            onChanged: (value) {
+                              setState(() {});
+                              _searchRootWords(value);
+                            },
                           ),
                         ),
+                        // Pagination info (hide when searching)
+                        if (_searchController.text.trim().isEmpty)
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            child: Text(
+                              'Page $_selectedPage of ${_totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil()} - Showing ${_rootWords.length} (Total: $_totalCount)',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ),
                         Expanded(
-                          child: _rootWords.isEmpty
+                          child: _isSearching
                               ? Center(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.library_books_outlined,
-                                          size: 64, color: Colors.grey[400]),
-                                      16.height,
-                                      Text('No Root Words',
-                                          style: boldTextStyle(
-                                              size: 18,
-                                              color: Colors.grey[600])),
-                                      8.height,
-                                      Text(
-                                          'Add your first root word to get started',
-                                          style: secondaryTextStyle(
-                                              color: Colors.grey[500])),
-                                      24.height,
-                                      ElevatedButton.icon(
-                                        onPressed: () {
-                                          setState(() {
-                                            _clearForm(hideForm: false);
-                                            _showForm = true;
-                                          });
-                                        },
-                                        icon: Icon(Icons.add),
-                                        label: Text('Add First Root Word'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: colorPrimary,
-                                          foregroundColor: Colors.white,
-                                          padding: EdgeInsets.symmetric(
-                                              horizontal: 24, vertical: 12),
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12)),
-                                        ),
-                                      ),
+                                      CircularProgressIndicator(color: colorPrimary),
+                                      12.height,
+                                      Text('Searching...', style: secondaryTextStyle()),
                                     ],
                                   ),
                                 )
-                              : _buildListView(_rootWords),
-                        ),
-                        _buildPaginationControls(),
+                              : _searchController.text.trim().isNotEmpty
+                                  ? (_searchResults.isEmpty
+                                      ? Center(
+                                          child: Text(
+                                            'No root words found',
+                                            style: secondaryTextStyle(color: Colors.grey[600]),
+                                          ),
+                                        )
+                                      : _buildListView(_searchResults, onItemTap: _editWord))
+                                  : _rootWords.isEmpty
+                                      ? Center(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(Icons.library_books_outlined,
+                                                  size: 64, color: Colors.grey[400]),
+                                              16.height,
+                                              Text('No Root Words',
+                                                  style: boldTextStyle(
+                                                      size: 18,
+                                                      color: Colors.grey[600])),
+                                              8.height,
+                                              Text(
+                                                  'Add your first root word to get started',
+                                                  style: secondaryTextStyle(
+                                                      color: Colors.grey[500])),
+                                              24.height,
+                                              ElevatedButton.icon(
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _clearForm(hideForm: false);
+                                                    _showForm = true;
+                                                  });
+                                                },
+                                                icon: Icon(Icons.add),
+                                                label: Text('Add First Root Word'),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: colorPrimary,
+                                                  foregroundColor: Colors.white,
+                                                  padding: EdgeInsets.symmetric(
+                                                      horizontal: 24, vertical: 12),
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(12)),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : _buildListView(_rootWords)),
+                        if (_searchController.text.trim().isEmpty)
+                          _buildPaginationControls(),
                       ],
                     ),
             ),
@@ -749,7 +846,7 @@ class _RootWordsViewState extends State<RootWordsView> {
     );
   }
 
-  Widget _buildListView(List<RootWordModel> rootWords) {
+  Widget _buildListView(List<RootWordModel> rootWords, {void Function(RootWordModel)? onItemTap}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -794,21 +891,7 @@ class _RootWordsViewState extends State<RootWordsView> {
               itemCount: rootWords.length,
               itemBuilder: (context, index) {
                 final word = rootWords[index];
-                return Container(
-                  margin: EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ExpansionTile(
+                final tile = ExpansionTile(
                     tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     childrenPadding: EdgeInsets.fromLTRB(16, 0, 16, 16),
                     leading: Container(
@@ -881,7 +964,28 @@ class _RootWordsViewState extends State<RootWordsView> {
                         _buildInfoRow('Description', word.description ?? ''),
                       ],
                     ],
+                  );
+                return Container(
+                  margin: EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
+                  child: onItemTap != null
+                      ? InkWell(
+                          onTap: () => onItemTap!(word),
+                          borderRadius: BorderRadius.circular(12),
+                          child: tile,
+                        )
+                      : tile,
                 );
               },
             ),
