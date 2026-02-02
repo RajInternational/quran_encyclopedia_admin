@@ -26,7 +26,7 @@ const RESOURCES = {"flutter.js": "83d881c1dbb6d6bcd6b42e274605b69c",
 "assets/assets/icons/allQuiz.png": "cf7dd8ec80da406658cca696908d5b75",
 "assets/assets/icons/addQuestion.png": "1ef3ec0df32f29578b5f252f25cc1b48",
 "assets/assets/quran.db": "a7c20c9607df75d40f1d2c0ef0244b3b",
-"assets/fonts/MaterialIcons-Regular.otf": "61c4464d3fe72a19ff1a5a8db76dd9c2",
+"assets/fonts/MaterialIcons-Regular.otf": "292a3d575ea83b1ac7fcada07e96212d",
 "assets/NOTICES": "ed897737e7dba66ae297981b5db6f808",
 "assets/packages/fluttertoast/assets/toastify.css": "a85675050054f179444bc5ad70ffc635",
 "assets/packages/fluttertoast/assets/toastify.js": "56e2c9cedd97f10e7e5f1cebd85d53e3",
@@ -63,9 +63,9 @@ const RESOURCES = {"flutter.js": "83d881c1dbb6d6bcd6b42e274605b69c",
 "canvaskit/canvaskit.js.symbols": "27361387bc24144b46a745f1afe92b50",
 "canvaskit/skwasm.js.symbols": "9fe690d47b904d72c7d020bd303adf16",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
-"flutter_bootstrap.js": "97ff7341591a970bea269dbeff720353",
+"flutter_bootstrap.js": "b347296b543015e2ea342cbebda0ab75",
 "version.json": "ecaa89d052c5a0dfbc03966c712e0b8c",
-"main.dart.js": "18e09dd02f3d03a9e2fd02eb3b5f0a8d"};
+"main.dart.js": "9e1139354f92b0d5c7fb74e53fa8cc9f"};
 // The application shell files that are downloaded before a service worker can
 // start.
 const CORE = ["main.dart.js",
