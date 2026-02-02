@@ -1,9 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:quizeapp/models/RootWordModel.dart';
 import 'package:quizeapp/services/RootWordsService.dart';
 import 'package:quizeapp/utils/Colors.dart';
 import 'package:quizeapp/utils/Common.dart';
+import 'package:quizeapp/widgets/urdu_keyboard.dart';
 import 'package:intl/intl.dart';
 import 'dart:ui' as ui;
 
@@ -25,17 +28,74 @@ class _RootWordsViewState extends State<RootWordsView> {
   final TextEditingController _englishShortMeaningController = TextEditingController();
   final TextEditingController _urduLongMeaningController = TextEditingController();
   final TextEditingController _englishLongMeaningController = TextEditingController();
+  
+  final FocusNode _rootWordFocus = FocusNode();
+  final FocusNode _triliteralFocus = FocusNode();
+  final FocusNode _descriptionFocus = FocusNode();
+  final FocusNode _urduShortFocus = FocusNode();
+  final FocusNode _englishShortFocus = FocusNode();
+  final FocusNode _urduLongFocus = FocusNode();
+  final FocusNode _englishLongFocus = FocusNode();
+  
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
   RootWordModel? _editingWord;
   bool _isLoading = false;
   bool _showForm = false;
-  final ScrollController _horizontalScrollController = ScrollController();
-  final ScrollController _verticalScrollController = ScrollController();
+  // Pagination state (like subject_detail_screen)
+  List<RootWordModel> _rootWords = [];
+  bool _loading = false;
+  int _selectedPage = 1;
+  int _currentPage = 1;
+  int _totalCount = 0;
+  Map<int, DocumentSnapshot?> _pageCursors = {};
+  final TextEditingController _pageController = TextEditingController();
+  static const int _itemsPerPage = 15;
+
+  /// Active controller for Urdu keyboard input
+  TextEditingController? _activeKeyboardController;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
+    
+    // Listen to focus changes to update active keyboard controller
+    _rootWordFocus.addListener(() {
+      if (_rootWordFocus.hasFocus) {
+        setState(() => _activeKeyboardController = _rootWordController);
+      }
+    });
+    _triliteralFocus.addListener(() {
+      if (_triliteralFocus.hasFocus) {
+        setState(() => _activeKeyboardController = _triliteralRootWordController);
+      }
+    });
+    _descriptionFocus.addListener(() {
+      if (_descriptionFocus.hasFocus) {
+        setState(() => _activeKeyboardController = _descriptionController);
+      }
+    });
+    _urduShortFocus.addListener(() {
+      if (_urduShortFocus.hasFocus) {
+        setState(() => _activeKeyboardController = _urduShortMeaningController);
+      }
+    });
+    _englishShortFocus.addListener(() {
+      if (_englishShortFocus.hasFocus) {
+        setState(() => _activeKeyboardController = _englishShortMeaningController);
+      }
+    });
+    _urduLongFocus.addListener(() {
+      if (_urduLongFocus.hasFocus) {
+        setState(() => _activeKeyboardController = _urduLongMeaningController);
+      }
+    });
+    _englishLongFocus.addListener(() {
+      if (_englishLongFocus.hasFocus) {
+        setState(() => _activeKeyboardController = _englishLongMeaningController);
+      }
+    });
   }
 
   @override
@@ -47,12 +107,65 @@ class _RootWordsViewState extends State<RootWordsView> {
     _englishShortMeaningController.dispose();
     _urduLongMeaningController.dispose();
     _englishLongMeaningController.dispose();
-    _horizontalScrollController.dispose();
-    _verticalScrollController.dispose();
+    _pageController.dispose();
+    
+    _rootWordFocus.dispose();
+    _triliteralFocus.dispose();
+    _descriptionFocus.dispose();
+    _urduShortFocus.dispose();
+    _englishShortFocus.dispose();
+    _urduLongFocus.dispose();
+    _englishLongFocus.dispose();
+    
     super.dispose();
   }
 
+  Future<void> _loadData() async {
+    if (!mounted) return;
+    setState(() => _loading = true);
+
+    try {
+      _totalCount = await _rootWordsService.getRootWordsCount();
+
+      // Build cursors if jumping to a page we haven't visited
+      final maxPageWithCursor = _pageCursors.length;
+      if (_selectedPage > 1 && _selectedPage > maxPageWithCursor) {
+        for (int p = maxPageWithCursor + 1; p < _selectedPage; p++) {
+          final result = await _rootWordsService.getRootWordsPaginated(
+            limit: _itemsPerPage,
+            startAfterDocument: _pageCursors[p - 1],
+          );
+          final lastDoc = result['lastDocument'] as DocumentSnapshot?;
+          if (lastDoc != null) {
+            _pageCursors[p] = lastDoc;
+          }
+        }
+      }
+
+      final result = await _rootWordsService.getRootWordsPaginated(
+        limit: _itemsPerPage,
+        startAfterDocument:
+            _selectedPage > 1 ? _pageCursors[_selectedPage - 1] : null,
+      );
+
+      if (mounted) {
+        setState(() {
+          _rootWords = (result['items'] as List<RootWordModel>);
+          final lastDoc = result['lastDocument'] as DocumentSnapshot?;
+          if (lastDoc != null) {
+            _pageCursors[_selectedPage] = lastDoc;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) toast('Error loading root words: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   void _clearForm({bool hideForm = true}) {
+    _activeKeyboardController = null;
     _rootWordController.clear();
     _descriptionController.clear();
     _triliteralRootWordController.clear();
@@ -69,6 +182,7 @@ class _RootWordsViewState extends State<RootWordsView> {
 
   void _editWord(RootWordModel word) {
     setState(() {
+      _activeKeyboardController = _rootWordController;
       _editingWord = word;
       _rootWordController.text = word.rootWord ?? '';
       _descriptionController.text = word.description ?? '';
@@ -112,6 +226,7 @@ class _RootWordsViewState extends State<RootWordsView> {
       }
 
       _clearForm(hideForm: true);
+      _loadData();
     } catch (e) {
       toast('Error: ${e.toString()}');
     } finally {
@@ -148,13 +263,182 @@ class _RootWordsViewState extends State<RootWordsView> {
       try {
         await _rootWordsService.deleteRootWord(word.id!);
         toast('Root word deleted successfully');
+        _loadData();
       } catch (e) {
         toast('Error deleting root word: ${e.toString()}');
       }
     }
   }
 
-  bool get _isWideScreen => MediaQuery.of(context).size.width > 600;
+  Widget _buildCopyPasteButtons(TextEditingController controller) {
+    return Padding(
+      padding: EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          OutlinedButton.icon(
+            onPressed: () {
+              final text = controller.text.trim();
+              if (text.isNotEmpty) {
+                Clipboard.setData(ClipboardData(text: text));
+                toast('Copied to clipboard');
+              } else {
+                toast('Nothing to copy');
+              }
+            },
+            icon: Icon(Icons.copy, size: 18),
+            label: Text('Copy'),
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+          SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final data = await Clipboard.getData(Clipboard.kTextPlain);
+              if (data != null && data.text != null && data.text!.isNotEmpty) {
+                controller.text = data.text!;
+                setState(() {});
+                toast('Pasted');
+              } else {
+                toast('Clipboard is empty');
+              }
+            },
+            icon: Icon(Icons.paste, size: 18),
+            label: Text('Paste'),
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls() {
+    final totalPages = _totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil();
+
+    return Container(
+      height: 60,
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Icon(Icons.arrow_back_ios, size: 20),
+            onPressed: _selectedPage > 1
+                ? () async {
+                    setState(() => _selectedPage--);
+                    await _loadData();
+                  }
+                : null,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  if (_currentPage > 1) ...[
+                    _buildPageButton(1),
+                    if (_currentPage > 2) Text('...'),
+                  ],
+                  for (int i = _currentPage;
+                      i <= _currentPage + 7 && i <= totalPages;
+                      i++)
+                    _buildPageButton(i),
+                  if (_currentPage + 7 < totalPages) ...[
+                    if (_currentPage + 8 < totalPages) Text('...'),
+                    _buildPageButton(totalPages),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.arrow_forward_ios, size: 20),
+            onPressed: _selectedPage < totalPages
+                ? () async {
+                    setState(() {
+                      _selectedPage++;
+                      if (_selectedPage > _currentPage + 7) {
+                        _currentPage = _selectedPage;
+                      }
+                    });
+                    await _loadData();
+                  }
+                : null,
+          ),
+          Container(
+            width: 100,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _pageController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Page',
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final input = _pageController.text.trim();
+                    if (input.isNotEmpty) {
+                      final pageNumber = int.tryParse(input);
+                      final totalPages =
+                          _totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil();
+                      if (pageNumber != null &&
+                          pageNumber >= 1 &&
+                          pageNumber <= totalPages) {
+                        setState(() {
+                          _selectedPage = pageNumber;
+                          _currentPage =
+                              ((pageNumber - 1) ~/ 8) * 8 + 1;
+                        });
+                        await _loadData();
+                        _pageController.clear();
+                      }
+                    }
+                  },
+                  child: Text('Go', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageButton(int pageNumber) {
+    final totalPages = _totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+      child: GestureDetector(
+        onTap: () async {
+          setState(() => _selectedPage = pageNumber);
+          await _loadData();
+        },
+        child: CircleAvatar(
+          radius: 16,
+          backgroundColor: pageNumber == _selectedPage
+              ? Colors.green
+              : Colors.grey[300],
+          child: Text(
+            '$pageNumber',
+            style: TextStyle(
+              color: pageNumber == _selectedPage ? Colors.white : Colors.black,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +456,7 @@ class _RootWordsViewState extends State<RootWordsView> {
                 setState(() {
                   _clearForm(hideForm: false);
                   _showForm = true;
+                  _activeKeyboardController = _rootWordController;
                 });
               },
               tooltip: 'Add New Root Word',
@@ -180,12 +465,15 @@ class _RootWordsViewState extends State<RootWordsView> {
       ),
       body: Column(
         children: [
-          // Form Section
+          // Form Section with Urdu keyboard
           if (_showForm)
             Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(16),
-                child: Container(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(16),
+                      child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
                     boxShadow: [
@@ -217,23 +505,36 @@ class _RootWordsViewState extends State<RootWordsView> {
                             ],
                           ),
                           16.height,
-                          AppTextField(
-                            controller: _rootWordController,
-                            textFieldType: TextFieldType.NAME,
-                            decoration: inputDecoration(labelText: 'Root Word *'),
-                            // enabled: _editingWord == null, // Can't edit root word once created
-                            // Keep ONLY this field required
-                            isValidationRequired: false,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Root word is required';
-                              }
-                              return null;
-                            },
+                          // Root Word - Urdu/Arabic keyboard, RTL, copy-paste
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppTextField(
+                                controller: _rootWordController,
+                                focus: _rootWordFocus,
+                                textFieldType: TextFieldType.OTHER,
+                                keyboardType: TextInputType.text,
+                                textAlign: TextAlign.right,
+                                textStyle: TextStyle(
+                                  fontFamily: 'ArabicFonts',
+                                  fontSize: 18,
+                                ),
+                                decoration: inputDecoration(labelText: 'Root Word *'),
+                                isValidationRequired: false,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Root word is required';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              _buildCopyPasteButtons(_rootWordController),
+                            ],
                           ),
                           16.height,
                           AppTextField(
                             controller: _descriptionController,
+                            focus: _descriptionFocus,
                             textFieldType: TextFieldType.MULTILINE,
                             maxLines: 3,
                             decoration: inputDecoration(labelText: 'Description'),
@@ -241,26 +542,55 @@ class _RootWordsViewState extends State<RootWordsView> {
                             validator: (_) => null,
                           ),
                           16.height,
-                          AppTextField(
-                            controller: _triliteralRootWordController,
-                            textFieldType: TextFieldType.MULTILINE,
-                            maxLines: 3,
-                            decoration: inputDecoration(labelText: 'Triliteral Root'),
-                            isValidationRequired: false,
-                            validator: (_) => null,
+                          // Triliteral Root - Urdu/Arabic keyboard, RTL, copy-paste
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppTextField(
+                                controller: _triliteralRootWordController,
+                                focus: _triliteralFocus,
+                                textFieldType: TextFieldType.MULTILINE,
+                                keyboardType: TextInputType.multiline,
+                                textAlign: TextAlign.right,
+                                textStyle: TextStyle(
+                                  fontFamily: 'ArabicFonts',
+                                  fontSize: 16,
+                                ),
+                                maxLines: 3,
+                                decoration: inputDecoration(labelText: 'Triliteral Root'),
+                                isValidationRequired: false,
+                                validator: (_) => null,
+                              ),
+                              _buildCopyPasteButtons(_triliteralRootWordController),
+                            ],
                           ),
                           16.height,
-                          AppTextField(
-                            controller: _urduShortMeaningController,
-                            textFieldType: TextFieldType.MULTILINE,
-                            maxLines: 2,
-                            decoration: inputDecoration(labelText: 'Urdu Short Meaning'),
-                            isValidationRequired: false,
-                            validator: (_) => null,
+                          // Urdu Short Meaning - Urdu keyboard, RTL, copy-paste
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppTextField(
+                                controller: _urduShortMeaningController,
+                                focus: _urduShortFocus,
+                                textFieldType: TextFieldType.MULTILINE,
+                                keyboardType: TextInputType.multiline,
+                                textAlign: TextAlign.right,
+                                textStyle: TextStyle(
+                                  fontFamily: 'UrduFonts',
+                                  fontSize: 16,
+                                ),
+                                maxLines: 2,
+                                decoration: inputDecoration(labelText: 'Urdu Short Meaning'),
+                                isValidationRequired: false,
+                                validator: (_) => null,
+                              ),
+                              _buildCopyPasteButtons(_urduShortMeaningController),
+                            ],
                           ),
                           16.height,
                           AppTextField(
                             controller: _englishShortMeaningController,
+                            focus: _englishShortFocus,
                             textFieldType: TextFieldType.MULTILINE,
                             maxLines: 2,
                             decoration: inputDecoration(labelText: 'English Short Meaning'),
@@ -268,17 +598,32 @@ class _RootWordsViewState extends State<RootWordsView> {
                             validator: (_) => null,
                           ),
                           16.height,
-                          AppTextField(
-                            controller: _urduLongMeaningController,
-                            textFieldType: TextFieldType.MULTILINE,
-                            maxLines: 3,
-                            decoration: inputDecoration(labelText: 'Urdu Long Meaning'),
-                            isValidationRequired: false,
-                            validator: (_) => null,
+                          // Urdu Long Meaning - Urdu keyboard, RTL, copy-paste
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppTextField(
+                                controller: _urduLongMeaningController,
+                                focus: _urduLongFocus,
+                                textFieldType: TextFieldType.MULTILINE,
+                                keyboardType: TextInputType.multiline,
+                                textAlign: TextAlign.right,
+                                textStyle: TextStyle(
+                                  fontFamily: 'UrduFonts',
+                                  fontSize: 16,
+                                ),
+                                maxLines: 3,
+                                decoration: inputDecoration(labelText: 'Urdu Long Meaning'),
+                                isValidationRequired: false,
+                                validator: (_) => null,
+                              ),
+                              _buildCopyPasteButtons(_urduLongMeaningController),
+                            ],
                           ),
                           16.height,
                           AppTextField(
                             controller: _englishLongMeaningController,
+                            focus: _englishLongFocus,
                             textFieldType: TextFieldType.MULTILINE,
                             maxLines: 3,
                             decoration: inputDecoration(labelText: 'English Long Meaning'),
@@ -318,330 +663,87 @@ class _RootWordsViewState extends State<RootWordsView> {
                 ),
               ),
             ),
-
-          // List Section
-          if (!_showForm)
-            Expanded(
-              child: StreamBuilder<List<RootWordModel>>(
-                stream: _rootWordsService.streamRootWords(),
-                builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: colorPrimary),
-                        16.height,
-                        Text('Loading root words...'),
-                      ],
-                    ),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-                        16.height,
-                        Text('Error loading root words'),
-                        8.height,
-                        Text(snapshot.error.toString(), style: secondaryTextStyle()),
-                      ],
-                    ),
-                  );
-                }
-
-                final rootWords = snapshot.data ?? [];
-
-                if (rootWords.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.library_books_outlined, size: 64, color: Colors.grey[400]),
-                        16.height,
-                        Text('No Root Words', style: boldTextStyle(size: 18, color: Colors.grey[600])),
-                        8.height,
-                        Text('Add your first root word to get started', style: secondaryTextStyle(color: Colors.grey[500])),
-                        24.height,
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _clearForm(hideForm: false);
-                              _showForm = true;
-                            });
-                          },
-                          icon: Icon(Icons.add),
-                          label: Text('Add First Root Word'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colorPrimary,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return _isWideScreen
-                    ? _buildDataTable(rootWords)
-                    : _buildListView(rootWords);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDataTable(List<RootWordModel> rootWords) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header with count and scroll hint
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: colorPrimary.withOpacity(0.05),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Total Root Words: ${rootWords.length}',
-                  style: boldTextStyle(size: 14, color: colorPrimary),
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.swap_horiz, size: 18, color: Colors.grey[600]),
-                    8.width,
-                    Text(
-                      'Scroll horizontally',
-                      style: secondaryTextStyle(size: 12, color: Colors.grey[600]),
-                    ),
-                  ],
+                // Standalone Urdu keyboard
+                UrduKeyboard(
+                  controller: _activeKeyboardController ?? _rootWordController,
+                  keyHeight: 40,
+                  keyFontSize: 16,
                 ),
               ],
             ),
           ),
-          // Scrollable table
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Scrollbar(
-                  controller: _horizontalScrollController,
-                  thumbVisibility: true,
-                  thickness: 6,
-                  radius: Radius.circular(3),
-                  child: SingleChildScrollView(
-                    controller: _horizontalScrollController,
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                      child: SingleChildScrollView(
-                        controller: _verticalScrollController,
-                        scrollDirection: Axis.vertical,
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: DataTable(
-                      headingRowColor: MaterialStateProperty.all(colorPrimary.withOpacity(0.1)),
-                      columnSpacing: 20,
-                      horizontalMargin: 12,
-                      dataRowMinHeight: 60,
-                      dataRowMaxHeight: 120,
-                      columns: [
-                        DataColumn(
-                          label: Container(
-                            constraints: BoxConstraints(minWidth: 150),
-                            child: Text('Root Word', style: boldTextStyle(size: 14)),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Container(
-                            constraints: BoxConstraints(minWidth: 180),
-                            child: Text('Trilateral Root', style: boldTextStyle(size: 14)),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Container(
-                            constraints: BoxConstraints(minWidth: 180),
-                            child: Text('Urdu Short', style: boldTextStyle(size: 14)),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Container(
-                            constraints: BoxConstraints(minWidth: 180),
-                            child: Text('English Short', style: boldTextStyle(size: 14)),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Container(
-                            constraints: BoxConstraints(minWidth: 220),
-                            child: Text('Urdu Long', style: boldTextStyle(size: 14)),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Container(
-                            constraints: BoxConstraints(minWidth: 220),
-                            child: Text('English Long', style: boldTextStyle(size: 14)),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Container(
-                            constraints: BoxConstraints(minWidth: 120),
-                            child: Text('Actions', style: boldTextStyle(size: 14)),
-                          ),
-                        ),
-                      ],
-                      rows: rootWords.map((word) {
-                        return DataRow(
-                          color: MaterialStateProperty.resolveWith<Color>(
-                            (Set<MaterialState> states) {
-                              if (states.contains(MaterialState.hovered)) {
-                                return colorPrimary.withOpacity(0.05);
-                              }
-                              return Colors.transparent;
-                            },
-                          ),
-                          cells: [
-                            DataCell(
-                              Container(
-                                constraints: BoxConstraints(minWidth: 150, maxWidth: 200),
-                                child: Text(
-                                  word.rootWord ?? '-',
-                                  style: primaryTextStyle().copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: colorPrimary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              Container(
-                                constraints: BoxConstraints(minWidth: 180, maxWidth: 250),
-                                child: Text(
-                                  word.triLiteralWord?.isEmpty ?? true ? '-' : word.triLiteralWord!,
-                                  style: secondaryTextStyle(),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              Container(
-                                constraints: BoxConstraints(minWidth: 180, maxWidth: 250),
-                                child: Text(
-                                  word.urduShortMeaning?.isEmpty ?? true ? '-' : word.urduShortMeaning!,
-                                  style: secondaryTextStyle(),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              Container(
-                                constraints: BoxConstraints(minWidth: 180, maxWidth: 250),
-                                child: Text(
-                                  word.englishShortMeaning?.isEmpty ?? true ? '-' : word.englishShortMeaning!,
-                                  style: secondaryTextStyle(),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              Container(
-                                constraints: BoxConstraints(minWidth: 220, maxWidth: 300),
-                                child: Text(
-                                  word.urduLongMeaning?.isEmpty ?? true ? '-' : word.urduLongMeaning!,
-                                  style: secondaryTextStyle(),
-                                  maxLines: 4,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              Container(
-                                constraints: BoxConstraints(minWidth: 220, maxWidth: 300),
-                                child: Text(
-                                  word.englishLongMeaning?.isEmpty ?? true ? '-' : word.englishLongMeaning!,
-                                  style: secondaryTextStyle(),
-                                  maxLines: 4,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              Container(
-                                constraints: BoxConstraints(minWidth: 120),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: colorPrimary.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: IconButton(
-                                        icon: Icon(Icons.edit, color: colorPrimary, size: 20),
-                                        onPressed: () => _editWord(word),
-                                        tooltip: 'Edit',
-                                        padding: EdgeInsets.all(8),
-                                        constraints: BoxConstraints(minWidth: 36, minHeight: 36),
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: IconButton(
-                                        icon: Icon(Icons.delete, color: Colors.red, size: 20),
-                                        onPressed: () => _deleteWord(word),
-                                        tooltip: 'Delete',
-                                        padding: EdgeInsets.all(8),
-                                        constraints: BoxConstraints(minWidth: 36, minHeight: 36),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                          ),
-                        ),
+
+          // List Section with pagination (like subject_detail_screen)
+          if (!_showForm)
+            Expanded(
+              child: _loading
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(color: colorPrimary),
+                          16.height,
+                          Text('Loading root words...'),
+                        ],
                       ),
+                    )
+                  : Column(
+                      children: [
+                        // Pagination info
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          child: Text(
+                            'Page $_selectedPage of ${_totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil()} - Showing ${_rootWords.length} (Total: $_totalCount)',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ),
+                        Expanded(
+                          child: _rootWords.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.library_books_outlined,
+                                          size: 64, color: Colors.grey[400]),
+                                      16.height,
+                                      Text('No Root Words',
+                                          style: boldTextStyle(
+                                              size: 18,
+                                              color: Colors.grey[600])),
+                                      8.height,
+                                      Text(
+                                          'Add your first root word to get started',
+                                          style: secondaryTextStyle(
+                                              color: Colors.grey[500])),
+                                      24.height,
+                                      ElevatedButton.icon(
+                                        onPressed: () {
+                                          setState(() {
+                                            _clearForm(hideForm: false);
+                                            _showForm = true;
+                                          });
+                                        },
+                                        icon: Icon(Icons.add),
+                                        label: Text('Add First Root Word'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: colorPrimary,
+                                          foregroundColor: Colors.white,
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 24, vertical: 12),
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : _buildListView(_rootWords),
+                        ),
+                        _buildPaginationControls(),
+                      ],
                     ),
-                  ),
-                );
-              },
             ),
-          ),
         ],
       ),
     );

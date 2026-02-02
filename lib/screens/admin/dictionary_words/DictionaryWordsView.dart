@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:quizeapp/models/DictionaryWordModel.dart';
 import 'package:quizeapp/models/RootWordModel.dart';
@@ -8,6 +10,7 @@ import 'package:quizeapp/services/RootWordsService.dart';
 import 'package:quizeapp/services/QuranDatabaseService.dart';
 import 'package:quizeapp/utils/Colors.dart';
 import 'package:quizeapp/utils/Common.dart';
+import 'package:quizeapp/widgets/urdu_keyboard.dart';
 
 class DictionaryWordsView extends StatefulWidget {
   const DictionaryWordsView({Key? key}) : super(key: key);
@@ -23,10 +26,15 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
 
   final TextEditingController _arabicWordController = TextEditingController();
   final TextEditingController _rootSearchController = TextEditingController();
+  final TextEditingController _pageController = TextEditingController();
+
+  final FocusNode _arabicWordFocus = FocusNode();
+  final FocusNode _rootSearchFocus = FocusNode();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   List<RootWordModel> _rootWords = [];
+  List<DictionaryWordModel> _dictionaryWords = [];
   List<RootWordModel> _filteredRootWords = [];
   List<Map<String, dynamic>> _sqliteWordSuggestions = [];
 
@@ -39,10 +47,34 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
   DictionaryWordModel? _editingWord;
   Timer? _searchDebounceTimer;
 
+  /// Active controller for Urdu keyboard input
+  TextEditingController? _activeKeyboardController;
+
+  // Pagination state (like subject_detail_screen)
+  bool _loading = false;
+  int _selectedPage = 1;
+  int _currentPage = 1;
+  int _totalCount = 0;
+  Map<int, DocumentSnapshot?> _pageCursors = {};
+  static const int _itemsPerPage = 15;
+
   @override
   void initState() {
     super.initState();
     _loadRootWords();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
+    
+    // Listen to focus changes to update active keyboard controller
+    _arabicWordFocus.addListener(() {
+      if (_arabicWordFocus.hasFocus) {
+        setState(() => _activeKeyboardController = _arabicWordController);
+      }
+    });
+    _rootSearchFocus.addListener(() {
+      if (_rootSearchFocus.hasFocus) {
+        setState(() => _activeKeyboardController = _rootSearchController);
+      }
+    });
   }
 
   @override
@@ -50,7 +82,53 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
     _searchDebounceTimer?.cancel();
     _arabicWordController.dispose();
     _rootSearchController.dispose();
+    _pageController.dispose();
+    _arabicWordFocus.dispose();
+    _rootSearchFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    if (!mounted) return;
+    setState(() => _loading = true);
+
+    try {
+      _totalCount = await _dictionaryWordsService.getDictionaryWordsCount();
+
+      final maxPageWithCursor = _pageCursors.length;
+      if (_selectedPage > 1 && _selectedPage > maxPageWithCursor) {
+        for (int p = maxPageWithCursor + 1; p < _selectedPage; p++) {
+          final result = await _dictionaryWordsService.getDictionaryWordsPaginated(
+            limit: _itemsPerPage,
+            startAfterDocument: _pageCursors[p - 1],
+          );
+          final lastDoc = result['lastDocument'] as DocumentSnapshot?;
+          if (lastDoc != null) {
+            _pageCursors[p] = lastDoc;
+          }
+        }
+      }
+
+      final result = await _dictionaryWordsService.getDictionaryWordsPaginated(
+        limit: _itemsPerPage,
+        startAfterDocument:
+            _selectedPage > 1 ? _pageCursors[_selectedPage - 1] : null,
+      );
+
+      if (mounted) {
+        setState(() {
+          _dictionaryWords = (result['items'] as List<DictionaryWordModel>);
+          final lastDoc = result['lastDocument'] as DocumentSnapshot?;
+          if (lastDoc != null) {
+            _pageCursors[_selectedPage] = lastDoc;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) toast('Error loading dictionary words: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _loadRootWords() async {
@@ -73,6 +151,7 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
       _showSuggestions = false;
       _showSqliteSuggestions = false;
       _showForm = true;
+      _activeKeyboardController = _arabicWordController;
     });
   }
 
@@ -85,13 +164,17 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
     setState(() {
       _editingWord = word;
       _arabicWordController.text = word.arabicWord ?? "";
-      _rootSearchController.text = root.rootWord ?? "";
+      _rootSearchController.text =
+          (root.triLiteralWord ?? root.rootWord ?? "").trim();
       _selectedRootHash = root.id;
       _showSuggestions = false;
       _showForm = true;
+      _activeKeyboardController = _arabicWordController;
     });
   }
 
+  /// Filter root words by triLiteralWord (Trilateral root e.g. "ر ب ب")
+  /// Limit to first 5 matches
   void _filterRootWords(String query) {
     if (query.isEmpty) {
       setState(() {
@@ -103,16 +186,66 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
 
     setState(() {
       _filteredRootWords = _rootWords
-          .where((e) => (e.rootWord ?? "").toLowerCase().contains(query.toLowerCase()))
+          .where((e) =>
+              (e.triLiteralWord ?? "")
+                  .toLowerCase()
+                  .contains(query.trim().toLowerCase()))
+          .take(5)
           .toList();
 
       _showSuggestions = _filteredRootWords.isNotEmpty;
     });
   }
 
+  Widget _buildCopyPasteButtons(TextEditingController controller) {
+    return Padding(
+      padding: EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          OutlinedButton.icon(
+            onPressed: () {
+              final text = controller.text.trim();
+              if (text.isNotEmpty) {
+                Clipboard.setData(ClipboardData(text: text));
+                toast('Copied to clipboard');
+              } else {
+                toast('Nothing to copy');
+              }
+            },
+            icon: Icon(Icons.copy, size: 18),
+            label: Text('Copy'),
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+          8.width,
+          OutlinedButton.icon(
+            onPressed: () async {
+              final data = await Clipboard.getData(Clipboard.kTextPlain);
+              if (data != null && data.text != null && data.text!.isNotEmpty) {
+                controller.text = data.text!;
+                setState(() {});
+                toast('Pasted');
+              } else {
+                toast('Clipboard is empty');
+              }
+            },
+            icon: Icon(Icons.paste, size: 18),
+            label: Text('Paste'),
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _selectRootWord(RootWordModel root) {
     setState(() {
-      _rootSearchController.text = root.rootWord ?? "";
+      // Show triLiteralWord when available (matches search), else rootWord
+      _rootSearchController.text =
+          (root.triLiteralWord ?? root.rootWord ?? "").trim();
       _selectedRootHash = root.id;
       _showSuggestions = false;
     });
@@ -214,6 +347,7 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
       }
 
       setState(() => _showForm = false);
+      _loadData();
     } catch (e) {
       toast("Error saving word");
     }
@@ -226,7 +360,136 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
     if (confirm ?? false) {
       await _dictionaryWordsService.deleteDictionaryWord(word.id!);
       toast("Deleted");
+      _loadData();
     }
+  }
+
+  Widget _buildPaginationControls() {
+    final totalPages =
+        _totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil();
+
+    return Container(
+      height: 60,
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Icon(Icons.arrow_back_ios, size: 20),
+            onPressed: _selectedPage > 1
+                ? () async {
+                    setState(() => _selectedPage--);
+                    await _loadData();
+                  }
+                : null,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  if (_currentPage > 1) ...[
+                    _buildPageButton(1),
+                    if (_currentPage > 2) Text('...'),
+                  ],
+                  for (int i = _currentPage;
+                      i <= _currentPage + 7 && i <= totalPages;
+                      i++)
+                    _buildPageButton(i),
+                  if (_currentPage + 7 < totalPages) ...[
+                    if (_currentPage + 8 < totalPages) Text('...'),
+                    _buildPageButton(totalPages),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.arrow_forward_ios, size: 20),
+            onPressed: _selectedPage < totalPages
+                ? () async {
+                    setState(() {
+                      _selectedPage++;
+                      if (_selectedPage > _currentPage + 7) {
+                        _currentPage = _selectedPage;
+                      }
+                    });
+                    await _loadData();
+                  }
+                : null,
+          ),
+          Container(
+            width: 100,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _pageController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Page',
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final input = _pageController.text.trim();
+                    if (input.isNotEmpty) {
+                      final pageNumber = int.tryParse(input);
+                      final totalPages = _totalCount == 0
+                          ? 1
+                          : (_totalCount / _itemsPerPage).ceil();
+                      if (pageNumber != null &&
+                          pageNumber >= 1 &&
+                          pageNumber <= totalPages) {
+                        setState(() {
+                          _selectedPage = pageNumber;
+                          _currentPage = ((pageNumber - 1) ~/ 8) * 8 + 1;
+                        });
+                        await _loadData();
+                        _pageController.clear();
+                      }
+                    }
+                  },
+                  child: Text('Go', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageButton(int pageNumber) {
+    final totalPages =
+        _totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+      child: GestureDetector(
+        onTap: () async {
+          setState(() => _selectedPage = pageNumber);
+          await _loadData();
+        },
+        child: CircleAvatar(
+          radius: 16,
+          backgroundColor: pageNumber == _selectedPage
+              ? Colors.green
+              : Colors.grey[300],
+          child: Text(
+            '$pageNumber',
+            style: TextStyle(
+              color: pageNumber == _selectedPage ? Colors.white : Colors.black,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -319,23 +582,42 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
       body: Column(
         children: [
           if (_showForm)
-            Container(
-              padding: EdgeInsets.all(16),
-              color: white,
-              child: Form(
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(16),
+                      child: Container(
+                        color: white,
+                        child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
                     10.height,
 
-                    AppTextField(
-                      controller: _arabicWordController,
-                      textFieldType: TextFieldType.NAME,
-                      decoration: inputDecoration(labelText: "Arabic Word *"),
-                      validator: (v) => v!.trim().isEmpty ? "Required" : null,
-                      onChanged: (value) {
-                        _searchSqliteWords(value);
-                      },
+                    // Arabic Word field - Urdu/Arabic keyboard, RTL, copy-paste
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppTextField(
+                          controller: _arabicWordController,
+                          focus: _arabicWordFocus,
+                          textFieldType: TextFieldType.OTHER,
+                          keyboardType: TextInputType.text,
+                          textAlign: TextAlign.right,
+                          textStyle: TextStyle(
+                            fontFamily: 'ArabicFonts',
+                            fontSize: 18,
+                          ),
+                          decoration: inputDecoration(labelText: "Arabic Word *"),
+                          validator: (v) => v!.trim().isEmpty ? "Required" : null,
+                          onChanged: (value) {
+                            _searchSqliteWords(value);
+                          },
+                        ),
+                        _buildCopyPasteButtons(_arabicWordController),
+                      ],
                     ),
 
                     if (_showSqliteSuggestions)
@@ -403,21 +685,40 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
 
                     20.height,
 
-                    AppTextField(
-                      controller: _rootSearchController,
-                      textFieldType: TextFieldType.NAME,
-                      decoration: inputDecoration(labelText: "Search Root Word *"),
-                      onChanged: _filterRootWords,
-                      onTap: () {
-                        setState(() {
-                          _filteredRootWords = _rootWords;
-                          _showSuggestions = true;
-                        });
-                      },
-                      validator: (v) {
-                        if (_selectedRootHash == null) return "Select a root word";
-                        return null;
-                      },
+                    // Search Root Word field - Urdu/Arabic keyboard, RTL, copy-paste
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppTextField(
+                          controller: _rootSearchController,
+                          focus: _rootSearchFocus,
+                          textFieldType: TextFieldType.OTHER,
+                          keyboardType: TextInputType.text,
+                          textAlign: TextAlign.right,
+                          textStyle: TextStyle(
+                            fontFamily: 'ArabicFonts',
+                            fontSize: 18,
+                          ),
+                          decoration: inputDecoration(
+                              labelText: "Search Root Word (by Tri-literal) *"),
+                          onChanged: _filterRootWords,
+                          onTap: () {
+                            setState(() {
+                              if (_rootSearchController.text.isEmpty) {
+                                _filteredRootWords = _rootWords.take(5).toList();
+                              } else {
+                                _filterRootWords(_rootSearchController.text);
+                              }
+                              _showSuggestions = true;
+                            });
+                          },
+                          validator: (v) {
+                            if (_selectedRootHash == null) return "Select a root word";
+                            return null;
+                          },
+                        ),
+                        _buildCopyPasteButtons(_rootSearchController),
+                      ],
                     ),
 
                     if (_showSuggestions)
@@ -434,9 +735,15 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
                           itemBuilder: (_, i) {
                             final word = _filteredRootWords[i];
                             return ListTile(
-                              title: Text(word.rootWord ?? ""),
+                              title: Text(
+                                word.triLiteralWord ?? word.rootWord ?? "",
+                                style: TextStyle(
+                                  fontFamily: 'ArabicFonts',
+                                  fontSize: 16,
+                                ),
+                              ),
                               subtitle: Text(
-                                word.description ?? "",
+                                '${word.rootWord ?? ""}${(word.description ?? "").isNotEmpty ? " - ${word.description}" : ""}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -475,55 +782,82 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
                 ),
               ),
             ),
-
-          Expanded(
-            child: StreamBuilder<List<DictionaryWordModel>>(
-              stream: _dictionaryWordsService.streamDictionaryWords(),
-              builder: (context, snap) {
-                if (!snap.hasData) {
-                  return Center(child: CircularProgressIndicator());
-                }
-
-                final list = snap.data!;
-
-                if (list.isEmpty) {
-                  return Center(child: Text("No dictionary words found"));
-                }
-
-                return ListView.builder(
-                  itemCount: list.length,
-                  itemBuilder: (_, i) {
-                    final word = list[i];
-                    final root = _rootWords.firstWhere(
-                          (e) => e.id == word.rootHash,
-                      orElse: () => RootWordModel(rootWord: "Unknown"),
-                    );
-
-                    return Card(
-                      margin: EdgeInsets.all(12),
-                      child: ListTile(
-                        title: Text(word.arabicWord ?? ""),
-                        subtitle: Text("Root: ${root.rootWord}"),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _openEditForm(word),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteWord(word),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+                  ),
+                ),
+                // Standalone Urdu keyboard
+                UrduKeyboard(
+                  controller: _activeKeyboardController ?? _arabicWordController,
+                  keyHeight: 40,
+                  keyFontSize: 16,
+                ),
+              ],
             ),
           ),
+
+          if (!_showForm)
+            Expanded(
+              child: _loading
+                ? Center(child: CircularProgressIndicator())
+                : Column(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        child: Text(
+                          'Page $_selectedPage of ${_totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil()} - Showing ${_dictionaryWords.length} (Total: $_totalCount)',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey[600]),
+                        ),
+                      ),
+                      Expanded(
+                        child: _dictionaryWords.isEmpty
+                            ? Center(child: Text("No dictionary words found"))
+                            : Builder(
+                                builder: (context) {
+                                  final rootMap = {
+                                    for (var r in _rootWords)
+                                      if (r.id != null) r.id!: r
+                                  };
+                                  return ListView.builder(
+                                    itemCount: _dictionaryWords.length,
+                                    itemBuilder: (_, i) {
+                                      final word = _dictionaryWords[i];
+                                      final root = rootMap[word.rootHash] ??
+                                          RootWordModel(rootWord: "Unknown");
+
+                                      return Card(
+                                        margin: EdgeInsets.all(12),
+                                        child: ListTile(
+                                          title: Text(word.arabicWord ?? ""),
+                                          subtitle: Text(
+                                              "Root: ${root.rootWord}"),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(Icons.edit,
+                                                    color: Colors.blue),
+                                                onPressed: () =>
+                                                    _openEditForm(word),
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.delete,
+                                                    color: Colors.red),
+                                                onPressed: () =>
+                                                    _deleteWord(word),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                      ),
+                      _buildPaginationControls(),
+                    ],
+                  ),
+            ),
         ],
       ),
     );

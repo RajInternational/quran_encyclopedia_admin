@@ -11,6 +11,37 @@ class DictionaryWordsService extends BaseService {
     ref = db.collection('dictionary_words');
   }
 
+  /// Query for pagination (orderBy required)
+  Query getDictionaryWordsQuery() {
+    return ref!.orderBy(CommonKeys.createdAt, descending: true);
+  }
+
+  /// Get total count for pagination
+  Future<int> getDictionaryWordsCount() async {
+    final snapshot = await getDictionaryWordsQuery().count().get();
+    return snapshot.count ?? 0;
+  }
+
+  /// Get dictionary words with pagination (cursor-based)
+  /// Returns map with 'items' (List<DictionaryWordModel>) and 'lastDocument' (DocumentSnapshot?)
+  Future<Map<String, dynamic>> getDictionaryWordsPaginated({
+    required int limit,
+    DocumentSnapshot? startAfterDocument,
+  }) async {
+    Query query = getDictionaryWordsQuery().limit(limit);
+    if (startAfterDocument != null) {
+      query = query.startAfterDocument(startAfterDocument);
+    }
+    final snapshot = await query.get();
+    final items = snapshot.docs
+        .map((y) => DictionaryWordModel.fromJson(
+            y.data() as Map<String, dynamic>..[CommonKeys.id] = y.id))
+        .toList();
+    final lastDoc =
+        snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
+    return {'items': items, 'lastDocument': lastDoc};
+  }
+
   /// Stream all dictionary words ordered by createdAt descending
   Stream<List<DictionaryWordModel>> streamDictionaryWords() {
     return ref!

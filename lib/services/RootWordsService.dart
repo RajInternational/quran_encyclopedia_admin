@@ -20,6 +20,37 @@ class RootWordsService extends BaseService {
     return digest.toString();
   }
 
+  /// Query for pagination (orderBy required)
+  Query getRootWordsQuery() {
+    return ref!.orderBy(CommonKeys.createdAt, descending: true);
+  }
+
+  /// Get total count for pagination
+  Future<int> getRootWordsCount() async {
+    final snapshot = await getRootWordsQuery().count().get();
+    return snapshot.count ?? 0;
+  }
+
+  /// Get root words with pagination (cursor-based)
+  /// Returns map with 'items' (List<RootWordModel>) and 'lastDocument' (DocumentSnapshot?)
+  Future<Map<String, dynamic>> getRootWordsPaginated({
+    required int limit,
+    DocumentSnapshot? startAfterDocument,
+  }) async {
+    Query query = getRootWordsQuery().limit(limit);
+    if (startAfterDocument != null) {
+      query = query.startAfterDocument(startAfterDocument);
+    }
+    final snapshot = await query.get();
+    final items = snapshot.docs
+        .map((y) => RootWordModel.fromJson(
+            y.data() as Map<String, dynamic>..[CommonKeys.id] = y.id))
+        .toList();
+    final lastDoc =
+        snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
+    return {'items': items, 'lastDocument': lastDoc};
+  }
+
   /// Stream all root words ordered by createdAt descending
   Stream<List<RootWordModel>> streamRootWords() {
     return ref!
