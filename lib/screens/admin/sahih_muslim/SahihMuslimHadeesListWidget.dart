@@ -49,7 +49,7 @@ class SahihMuslimHadeesListWidgetState
   int selectedPage = 1;
   int totalHadeesCount = 7520;
   DocumentSnapshot? _lastDocument;
-  final int _perPage = 30;
+  final int _perPage = 15;
   TextEditingController _pageController = TextEditingController();
 
   bool loading = false;
@@ -114,77 +114,32 @@ class SahihMuslimHadeesListWidgetState
   //   });
   // }
   Future<void> _loadData() async {
-    setState(() {
-      loading = true;
-    });
-    try {
-      final startAtValue = ((selectedPage - 1) * 30) + 1;
-      final endBeforeValue = (selectedPage * 30) + 1;
-      print('Value start $startAtValue');
-      print('Value end $endBeforeValue');
-
-      QuerySnapshot snapshot;
-      if (selectedCategoryForFilter != null &&
-          selectedCategoryForFilter!.id != null) {
-        snapshot = await FirebaseFirestore.instance
-            .collection('Books')
-            .doc('HadithBooks')
-            .collection('Sahih Muslim Hadith')
-            .where('category',
-                isEqualTo:
-                    categoryService.ref!.doc(selectedCategoryForFilter!.id)!)
-            .orderBy(CommonKeys.hadithNo)
-            .startAt([startAtValue])
-            .endBefore([endBeforeValue])
-            .limit(_perPage)
-            .get();
-      } else {
-        snapshot = await FirebaseFirestore.instance
-            .collection('Books')
-            .doc('HadithBooks')
-            .collection('Sahih Muslim Hadith')
-            .orderBy(CommonKeys.hadithNo)
-            .startAt([startAtValue])
-            .endBefore([endBeforeValue])
-            .limit(_perPage)
-            .get();
-
-        print('snapshot ${snapshot.docs.length}');
-      }
-
-      listOfHadeeed.clear();
-      if (snapshot.docs.isNotEmpty) {
-        // _snapshot!.docs.addAll(snapshot.docs);
-        final tempHadeesList = snapshot.docs
-            .map((e) => HadeesData.fromJson(e.data() as Map<String, dynamic>))
-            .toList();
-        for (int i = 0; i < tempHadeesList.length; i++) {
-          listOfHadeeed.add(tempHadeesList[i]);
-        }
-        print('_snapshot length load data ${listOfHadeeed.length}');
-        if (snapshot.docs.isNotEmpty) {
-          _lastDocument = snapshot.docs.last;
-        } else {
-          _lastDocument = null;
-        }
-
-        // _snapshot = snapshot;
-        //
-        // listOfHadeeed.addAll(_snapshot!.docs
-        //     .map((e) => HadeesData.fromJson(e.data() as Map<String, dynamic>)));
-        // if (snapshot.docs.isNotEmpty) {
-        //   _lastDocument = snapshot.docs.last;
-        // }
-      }
-    } on FirebaseException catch (e) {
-      log('Did not load hadees => ${e.message}');
-    } catch (e) {
-      log('Did not load hadees => $e');
-    }
-
-    setState(() {
-      loading = false;
-    });
+    setState(() => loading = true);
+    // COMMENTED: Hadith books Firebase fetching disabled - not in use
+    // try {
+    //   final startAtValue = ((selectedPage - 1) * _perPage) + 1;
+    //   final endBeforeValue = (selectedPage * _perPage) + 1;
+    //   QuerySnapshot snapshot;
+    //   if (selectedCategoryForFilter != null && selectedCategoryForFilter!.id != null) {
+    //     snapshot = await FirebaseFirestore.instance
+    //         .collection('Books').doc('HadithBooks').collection('Sahih Muslim Hadith')
+    //         .where('category', isEqualTo: categoryService.ref!.doc(selectedCategoryForFilter!.id)!)
+    //         .orderBy(CommonKeys.hadithNo).startAt([startAtValue]).endBefore([endBeforeValue]).limit(_perPage).get();
+    //   } else {
+    //     snapshot = await FirebaseFirestore.instance
+    //         .collection('Books').doc('HadithBooks').collection('Sahih Muslim Hadith')
+    //         .orderBy(CommonKeys.hadithNo).startAt([startAtValue]).endBefore([endBeforeValue]).limit(_perPage).get();
+    //   }
+    //   listOfHadeeed.clear();
+    //   if (snapshot.docs.isNotEmpty) {
+    //     final tempHadeesList = snapshot.docs.map((e) => HadeesData.fromJson(e.data() as Map<String, dynamic>)).toList();
+    //     for (int i = 0; i < tempHadeesList.length; i++) { listOfHadeeed.add(tempHadeesList[i]); }
+    //     _lastDocument = snapshot.docs.last;
+    //   } else { _lastDocument = null; }
+    // } catch (e) { log('Did not load hadees => $e'); }
+    listOfHadeeed.clear();
+    _lastDocument = null;
+    setState(() => loading = false);
   }
   //
   // Future<void> getCount() async {
@@ -199,50 +154,28 @@ class SahihMuslimHadeesListWidgetState
   // }
 
   Future<void> _loadMoreData() async {
-    if (_lastDocument == null) return;
-
-    QuerySnapshot snapshot;
-    if (selectedCategoryForFilter != null &&
-        selectedCategoryForFilter!.id != null) {
-      snapshot = await FirebaseFirestore.instance
-          .collection('Books')
-          .doc('HadithBooks')
-          .collection('Sahih Muslim Hadith')
-          .where('category',
-              isEqualTo:
-                  categoryService.ref!.doc(selectedCategoryForFilter!.id)!)
-          .orderBy(CommonKeys.hadithNo)
-          .startAfterDocument(_lastDocument!)
-          .limit(_perPage)
-          .get();
-    } else {
-      snapshot = await FirebaseFirestore.instance
-          .collection('Books')
-          .doc('HadithBooks')
-          .collection('Sahih Muslim Hadith')
-          .orderBy(CommonKeys.hadithNo)
-          .startAfterDocument(_lastDocument!)
-          .limit(_perPage)
-          .get();
-    }
-
-    setState(() {
-      if (snapshot.docs.isNotEmpty && _snapshot != null) {
-        _snapshot!.docs.addAll(snapshot.docs);
-        final tempHadeesList = snapshot.docs
-            .map((e) => HadeesData.fromJson(e.data() as Map<String, dynamic>))
-            .toList();
-        for (int i = 0; i < tempHadeesList.length; i++) {
-          listOfHadeeed.add(tempHadeesList[i]);
-        }
-        print('_snapshot length load more dataaaaaa ${listOfHadeeed.length}');
-        if (snapshot.docs.isNotEmpty) {
-          _lastDocument = snapshot.docs.last;
-        } else {
-          _lastDocument = null;
-        }
-      }
-    });
+    // COMMENTED: Hadith books Firebase fetching disabled - not in use
+    // if (_lastDocument == null) return;
+    // QuerySnapshot snapshot;
+    // if (selectedCategoryForFilter != null && selectedCategoryForFilter!.id != null) {
+    //   snapshot = await FirebaseFirestore.instance
+    //       .collection('Books').doc('HadithBooks').collection('Sahih Muslim Hadith')
+    //       .where('category', isEqualTo: categoryService.ref!.doc(selectedCategoryForFilter!.id)!)
+    //       .orderBy(CommonKeys.hadithNo).startAfterDocument(_lastDocument!).limit(_perPage).get();
+    // } else {
+    //   snapshot = await FirebaseFirestore.instance
+    //       .collection('Books').doc('HadithBooks').collection('Sahih Muslim Hadith')
+    //       .orderBy(CommonKeys.hadithNo).startAfterDocument(_lastDocument!).limit(_perPage).get();
+    // }
+    // setState(() {
+    //   if (snapshot.docs.isNotEmpty && _snapshot != null) {
+    //     _snapshot!.docs.addAll(snapshot.docs);
+    //     final tempHadeesList = snapshot.docs.map((e) => HadeesData.fromJson(e.data() as Map<String, dynamic>)).toList();
+    //     for (int i = 0; i < tempHadeesList.length; i++) { listOfHadeeed.add(tempHadeesList[i]); }
+    //     _lastDocument = snapshot.docs.last;
+    //   } else { _lastDocument = null; }
+    //   }
+    // });
   }
 
   @override
@@ -335,30 +268,14 @@ class SahihMuslimHadeesListWidgetState
   }
 
   Future<void> _saveToLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final hadeesService = SahihMuslimHadeesService();
-
-    String? jsonString = prefs.getString('savedHadeesData');
-    if (jsonString != null) {
-      toast('Data already exists.');
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => DisplaySavedDataScreen()),
-      );
-      return;
-    }
-
-    List<HadeesData> listOfHadees = await hadeesService.fetchAllHadees();
-
-    List<Map<String, dynamic>> jsonList =
-        listOfHadees.map((hadees) => hadees.toJson()).toList();
-    jsonString = jsonEncode(jsonList);
-    await prefs.setString('savedHadeesData', jsonString);
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => DisplaySavedDataScreen()),
-    );
+    // COMMENTED: Hadith books Firebase fetching disabled - not in use
+    // final prefs = await SharedPreferences.getInstance();
+    // final hadeesService = SahihMuslimHadeesService();
+    // String? jsonString = prefs.getString('savedHadeesData');
+    // if (jsonString != null) { ... }
+    // List<HadeesData> listOfHadees = await hadeesService.fetchAllHadees();
+    // ...
+    toast('Hadith books disabled');
   }
 
   @override
@@ -366,9 +283,9 @@ class SahihMuslimHadeesListWidgetState
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          print("Button pressed");
-          await SharedPreferencesHelper.downloadData();
-          print("JSON download function completed");
+          // COMMENTED: Hadith books - Firebase download disabled
+          // await SharedPreferencesHelper.downloadData();
+          toast('Hadith books disabled');
         },
       ),
       appBar: AppBar(
@@ -861,7 +778,7 @@ class SahihMuslimHadeesListWidgetState
                             ),
                             // Page numbers
                             for (int i = currentPage; i <= currentPage + 9; i++)
-                              if (i <= (totalHadeesCount / 30).ceil())
+                              if (i <= (totalHadeesCount / _perPage).ceil())
                                 Padding(
                                   padding: const EdgeInsets.all(2.0),
                                   child: GestureDetector(
@@ -894,7 +811,7 @@ class SahihMuslimHadeesListWidgetState
                               ),
                               onPressed: () {
                                 if (currentPage + 10 <=
-                                    (totalHadeesCount / 30).ceil()) {
+                                    (totalHadeesCount / _perPage).ceil()) {
                                   setState(() {
                                     currentPage += 10;
                                   });
@@ -909,13 +826,13 @@ class SahihMuslimHadeesListWidgetState
                             //   ),
                             //   onPressed: () {
                             //     if (startPage + 10 <=
-                            //         (totalHadeesCount / 30).ceil()) {
+                            //         (totalHadeesCount / _perPage).ceil()) {
                             //       setState(() {
                             //         startPage += 10;
                             //       });
                             //     } else {
                             //       setState(() {
-                            //         startPage = (totalHadeesCount / 30).ceil();
+                            //         startPage = (totalHadeesCount / _perPage).ceil();
                             //       });
                             //     }
                             //   },
@@ -947,7 +864,7 @@ class SahihMuslimHadeesListWidgetState
                                         if (pageNumber != null &&
                                             pageNumber >= 1 &&
                                             pageNumber <=
-                                                (totalHadeesCount / 30)
+                                                (totalHadeesCount / _perPage)
                                                     .ceil()) {
                                           setState(() {
                                             startPage = pageNumber;

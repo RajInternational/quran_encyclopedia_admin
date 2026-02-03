@@ -10,83 +10,51 @@ import 'BaseService.dart';
 
 class SahihMuslimHadeesService extends BaseService {
   SahihMuslimHadeesService() {
-    ref = db
-        .collection('Books')
-        .doc('HadithBooks')
-        .collection('Sahih Muslim Hadith');
+    // COMMENTED: Hadith books not in use
+    // ref = db.collection('Books').doc('HadithBooks').collection('Sahih Muslim Hadith');
   }
-  Future<List<HadeesData>> fetchAllHadees() async {
-    QuerySnapshot snapshot = await ref!.get();
-    return snapshot.docs
-        .map((doc) => HadeesData.fromJson(doc.data() as Map<String, dynamic>))
-        .toList();
+  Future<List<HadeesData>> fetchAllHadees({int limit = 200}) async {
+    // COMMENTED: Hadith books Firebase fetching disabled
+    // QuerySnapshot snapshot = await ref!.orderBy(CommonKeys.hadithNo).limit(limit).get();
+    // return snapshot.docs.map((doc) => HadeesData.fromJson(doc.data() as Map<String, dynamic>)).toList();
+    return [];
   }
 
   Stream<List<QuestionData>> listQuestion() {
-    return ref!.snapshots().map((x) => x.docs
-        .map((y) => QuestionData.fromJson(y.data() as Map<String, dynamic>))
-        .toList());
+    // COMMENTED: Hadith books Firebase fetching disabled
+    // return ref!.snapshots().map((x) => x.docs.map((y) => QuestionData.fromJson(y.data() as Map<String, dynamic>)).toList());
+    return Stream.value([]);
   }
 
   Query? getQuestions() {
-    return ref;
+    // COMMENTED: Hadith books not in use
+    // return ref;
+    return null;
   }
 
   Future<int> countHadees() async {
-    AggregateQuerySnapshot query = await ref!.count().get();
-    debugPrint('The number of Sahih Muslim Hadees: ${query.count}');
-    return query.count!;
+    // COMMENTED: Hadith books Firebase fetching disabled
+    // AggregateQuerySnapshot query = await ref!.count().get();
+    // return query.count!;
+    return 0;
   }
 
   Future<QuestionData> questionById(String? id) async {
-    return await ref!.where('id', isEqualTo: id).limit(1).get().then((x) {
-      if (x.docs.isNotEmpty) {
-        return QuestionData.fromJson(
-            x.docs.first.data() as Map<String, dynamic>);
-      } else {
-        throw 'Not available';
-      }
-    });
+    // COMMENTED: Hadith books Firebase fetching disabled
+    // return await ref!.where('id', isEqualTo: id).limit(1).get().then((x) { ... });
+    throw 'Not available - Hadith books disabled';
   }
 
   Future<List<HadeesData>> questionListFuture(
-      {DocumentReference? categoryRef}) async {
-    Query? query;
-
-    if (categoryRef != null) {
-      query = ref!.where('category', isEqualTo: categoryRef);
-    } else {
-      query = ref;
-    }
-
-    log(ref);
-    log(query!.parameters);
-    List<HadeesData> data = [];
-    try {
-      data = await query.get().then((x) => x.docs
-          .map((y) => HadeesData.fromJson(y.data() as Map<String, dynamic>))
-          .toList());
-    } catch (ex) {
-      debugPrint(ex.toString());
-    }
-    return data;
+      {DocumentReference? categoryRef, int limit = 100}) async {
+    // COMMENTED: Hadith books Firebase fetching disabled
+    // ... query and fetch from Firebase ...
+    return [];
   }
 
   Query? getQuestionsList({DocumentReference? categoryRef}) {
-    Query? query;
-
-    if (categoryRef != null) {
-      try {
-        query = ref!
-            .where('category', isEqualTo: categoryRef)
-            .orderBy(CommonKeys.hadithNo);
-      } catch (ex) {
-        debugPrint(ex.toString());
-      }
-    } else {
-      query = ref!.orderBy(CommonKeys.hadithNo);
-    }
-    // log(query.toString());
-    return query;
+    // COMMENTED: Hadith books not in use
+    // return query;
+    return null;
   }
 }

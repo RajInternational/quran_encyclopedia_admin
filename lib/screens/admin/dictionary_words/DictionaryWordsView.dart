@@ -50,13 +50,16 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
   /// Active controller for Urdu keyboard input
   TextEditingController? _activeKeyboardController;
 
+  /// Toggle Urdu keyboard visibility (hide/show for phone/web)
+  bool _showUrduKeyboard = true;
+
   // Pagination state (like subject_detail_screen)
   bool _loading = false;
   int _selectedPage = 1;
   int _currentPage = 1;
   int _totalCount = 0;
   Map<int, DocumentSnapshot?> _pageCursors = {};
-  static const int _itemsPerPage = 15;
+  static const int _itemsPerPage = 10;
 
   @override
   void initState() {
@@ -88,24 +91,32 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
     super.dispose();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({int? revertPageOnSkip}) async {
     if (!mounted) return;
     setState(() => _loading = true);
 
     try {
       _totalCount = await _dictionaryWordsService.getDictionaryWordsCount();
 
-      final maxPageWithCursor = _pageCursors.length;
-      if (_selectedPage > 1 && _selectedPage > maxPageWithCursor) {
-        for (int p = maxPageWithCursor + 1; p < _selectedPage; p++) {
-          final result = await _dictionaryWordsService.getDictionaryWordsPaginated(
+      // Fetch only target page: build cursor only for immediate previous page (1 extra fetch max)
+      final needCursorFor = _selectedPage > 1 ? _selectedPage - 1 : 0;
+      if (needCursorFor > 0 && !_pageCursors.containsKey(needCursorFor)) {
+        if (needCursorFor == 1) {
+          final r = await _dictionaryWordsService.getDictionaryWordsPaginated(limit: _itemsPerPage, startAfterDocument: null);
+          final last = r['lastDocument'] as DocumentSnapshot?;
+          if (last != null) _pageCursors[1] = last;
+        } else if (_pageCursors.containsKey(needCursorFor - 1)) {
+          final r = await _dictionaryWordsService.getDictionaryWordsPaginated(
             limit: _itemsPerPage,
-            startAfterDocument: _pageCursors[p - 1],
+            startAfterDocument: _pageCursors[needCursorFor - 1],
           );
-          final lastDoc = result['lastDocument'] as DocumentSnapshot?;
-          if (lastDoc != null) {
-            _pageCursors[p] = lastDoc;
-          }
+          final last = r['lastDocument'] as DocumentSnapshot?;
+          if (last != null) _pageCursors[needCursorFor] = last;
+        } else {
+          toast('Use Previous/Next to reach this page (reduces Firebase reads)');
+          if (mounted && revertPageOnSkip != null) setState(() => _selectedPage = revertPageOnSkip);
+          setState(() => _loading = false);
+          return;
         }
       }
 
@@ -133,7 +144,12 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
 
   Future<void> _loadRootWords() async {
     try {
-      _rootWords = await _rootWordsService.getRootWordsFuture();
+      // Minimal initial load for dropdown; user can search for more
+      final result = await _rootWordsService.getRootWordsPaginated(
+        limit: 50,
+        startAfterDocument: null,
+      );
+      _rootWords = (result['items'] as List<RootWordModel>);
       setState(() {});
     } catch (e) {
       toast("Error loading root words");
@@ -445,11 +461,12 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
                       if (pageNumber != null &&
                           pageNumber >= 1 &&
                           pageNumber <= totalPages) {
+                        final prevPage = _selectedPage;
                         setState(() {
                           _selectedPage = pageNumber;
                           _currentPage = ((pageNumber - 1) ~/ 8) * 8 + 1;
                         });
-                        await _loadData();
+                        await _loadData(revertPageOnSkip: prevPage);
                         _pageController.clear();
                       }
                     }
@@ -784,12 +801,35 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
             ),
                   ),
                 ),
-                // Standalone Urdu keyboard
-                UrduKeyboard(
-                  controller: _activeKeyboardController ?? _arabicWordController,
-                  keyHeight: 40,
-                  keyFontSize: 16,
+                // Urdu keyboard with hide/show toggle
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Urdu Keyboard',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ),
+                    TextButton.icon(
+                      icon: Icon(
+                        _showUrduKeyboard ? Icons.keyboard_hide : Icons.keyboard,
+                        size: 20,
+                        color: colorPrimary,
+                      ),
+                      label: Text(
+                        _showUrduKeyboard ? 'Hide' : 'Show',
+                        style: TextStyle(color: colorPrimary, fontSize: 12),
+                      ),
+                      onPressed: () => setState(() => _showUrduKeyboard = !_showUrduKeyboard),
+                    ),
+                  ],
                 ),
+                if (_showUrduKeyboard)
+                  UrduKeyboard(
+                    controller: _activeKeyboardController ?? _arabicWordController,
+                    keyHeight: 40,
+                    keyFontSize: 16,
+                  ),
               ],
             ),
           ),

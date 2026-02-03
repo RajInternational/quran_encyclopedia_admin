@@ -14,7 +14,7 @@ class CategoryService extends BaseService {
   }
 
   Future<List<CategoryData>> categoriesFuture({String parentCategoryId = ''}) async {
-    return await ref!.where('parentCategoryId', isEqualTo: '').get().then((x) => x.docs.map((y) => CategoryData.fromJson(y.data() as Map<String, dynamic>)).toList());
+    return await ref!.where('parentCategoryId', isEqualTo: '').limit(50).get().then((x) => x.docs.map((y) => CategoryData.fromJson(y.data() as Map<String, dynamic>)).toList());
   }
 
   Future<CategoryData> getCategoryById(String? id) async {

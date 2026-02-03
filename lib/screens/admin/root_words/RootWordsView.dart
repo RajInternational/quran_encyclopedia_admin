@@ -37,6 +37,7 @@ class _RootWordsViewState extends State<RootWordsView> {
   final FocusNode _englishShortFocus = FocusNode();
   final FocusNode _urduLongFocus = FocusNode();
   final FocusNode _englishLongFocus = FocusNode();
+  final FocusNode _searchFocus = FocusNode();
   
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
@@ -52,7 +53,7 @@ class _RootWordsViewState extends State<RootWordsView> {
   Map<int, DocumentSnapshot?> _pageCursors = {};
   final TextEditingController _pageController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
-  static const int _itemsPerPage = 15;
+  static const int _itemsPerPage = 10;
 
   /// Search state
   List<RootWordModel> _searchResults = [];
@@ -61,6 +62,9 @@ class _RootWordsViewState extends State<RootWordsView> {
 
   /// Active controller for Urdu keyboard input
   TextEditingController? _activeKeyboardController;
+
+  /// Toggle Urdu keyboard visibility (hide/show for phone/web)
+  bool _showUrduKeyboard = true;
 
   @override
   void initState() {
@@ -103,6 +107,11 @@ class _RootWordsViewState extends State<RootWordsView> {
         setState(() => _activeKeyboardController = _englishLongMeaningController);
       }
     });
+    _searchFocus.addListener(() {
+      if (_searchFocus.hasFocus) {
+        setState(() => _activeKeyboardController = _searchController);
+      }
+    });
   }
 
   @override
@@ -125,29 +134,37 @@ class _RootWordsViewState extends State<RootWordsView> {
     _englishShortFocus.dispose();
     _urduLongFocus.dispose();
     _englishLongFocus.dispose();
+    _searchFocus.dispose();
     
     super.dispose();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({int? revertPageOnSkip}) async {
     if (!mounted) return;
     setState(() => _loading = true);
 
     try {
       _totalCount = await _rootWordsService.getRootWordsCount();
 
-      // Build cursors if jumping to a page we haven't visited
-      final maxPageWithCursor = _pageCursors.length;
-      if (_selectedPage > 1 && _selectedPage > maxPageWithCursor) {
-        for (int p = maxPageWithCursor + 1; p < _selectedPage; p++) {
-          final result = await _rootWordsService.getRootWordsPaginated(
+      // Fetch only target page: build cursor only for immediate previous page (1 extra fetch max)
+      final needCursorFor = _selectedPage > 1 ? _selectedPage - 1 : 0;
+      if (needCursorFor > 0 && !_pageCursors.containsKey(needCursorFor)) {
+        if (needCursorFor == 1) {
+          final r = await _rootWordsService.getRootWordsPaginated(limit: _itemsPerPage, startAfterDocument: null);
+          final last = r['lastDocument'] as DocumentSnapshot?;
+          if (last != null) _pageCursors[1] = last;
+        } else if (_pageCursors.containsKey(needCursorFor - 1)) {
+          final r = await _rootWordsService.getRootWordsPaginated(
             limit: _itemsPerPage,
-            startAfterDocument: _pageCursors[p - 1],
+            startAfterDocument: _pageCursors[needCursorFor - 1],
           );
-          final lastDoc = result['lastDocument'] as DocumentSnapshot?;
-          if (lastDoc != null) {
-            _pageCursors[p] = lastDoc;
-          }
+          final last = r['lastDocument'] as DocumentSnapshot?;
+          if (last != null) _pageCursors[needCursorFor] = last;
+        } else {
+          toast('Use Previous/Next to reach this page (reduces Firebase reads)');
+          if (mounted && revertPageOnSkip != null) setState(() => _selectedPage = revertPageOnSkip);
+          setState(() => _loading = false);
+          return;
         }
       }
 
@@ -439,12 +456,13 @@ class _RootWordsViewState extends State<RootWordsView> {
                       if (pageNumber != null &&
                           pageNumber >= 1 &&
                           pageNumber <= totalPages) {
+                        final prevPage = _selectedPage;
                         setState(() {
                           _selectedPage = pageNumber;
                           _currentPage =
                               ((pageNumber - 1) ~/ 8) * 8 + 1;
                         });
-                        await _loadData();
+                        await _loadData(revertPageOnSkip: prevPage);
                         _pageController.clear();
                       }
                     }
@@ -709,12 +727,35 @@ class _RootWordsViewState extends State<RootWordsView> {
                 ),
               ),
             ),
-                // Standalone Urdu keyboard
-                UrduKeyboard(
-                  controller: _activeKeyboardController ?? _rootWordController,
-                  keyHeight: 40,
-                  keyFontSize: 16,
+                // Urdu keyboard with hide/show toggle
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Urdu Keyboard',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ),
+                    TextButton.icon(
+                      icon: Icon(
+                        _showUrduKeyboard ? Icons.keyboard_hide : Icons.keyboard,
+                        size: 20,
+                        color: colorPrimary,
+                      ),
+                      label: Text(
+                        _showUrduKeyboard ? 'Hide' : 'Show',
+                        style: TextStyle(color: colorPrimary, fontSize: 12),
+                      ),
+                      onPressed: () => setState(() => _showUrduKeyboard = !_showUrduKeyboard),
+                    ),
+                  ],
                 ),
+                if (_showUrduKeyboard)
+                  UrduKeyboard(
+                    controller: _activeKeyboardController ?? _rootWordController,
+                    keyHeight: 40,
+                    keyFontSize: 16,
+                  ),
               ],
             ),
           ),
@@ -735,34 +776,46 @@ class _RootWordsViewState extends State<RootWordsView> {
                     )
                   : Column(
                       children: [
-                        // Search field
+                        // Search field (with Urdu keyboard support)
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          child: AppTextField(
-                            controller: _searchController,
-                            textFieldType: TextFieldType.OTHER,
-                            decoration: InputDecoration(
-                              hintText: 'Search root word, tri-literal, description...',
-                              prefixIcon: Icon(Icons.search),
-                              suffixIcon: _searchController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: Icon(Icons.clear, size: 20),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        setState(() {
-                                          _searchResults = [];
-                                          _isSearching = false;
-                                        });
-                                      },
-                                    )
-                                  : null,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            ),
-                            onChanged: (value) {
-                              setState(() {});
-                              _searchRootWords(value);
-                            },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppTextField(
+                                controller: _searchController,
+                                focus: _searchFocus,
+                                textFieldType: TextFieldType.OTHER,
+                                textAlign: TextAlign.right,
+                                textStyle: TextStyle(
+                                  fontFamily: 'ArabicFonts',
+                                  fontSize: 16,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Search root word, tri-literal, description...',
+                                  prefixIcon: Icon(Icons.search),
+                                  suffixIcon: _searchController.text.isNotEmpty
+                                      ? IconButton(
+                                          icon: Icon(Icons.clear, size: 20),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            setState(() {
+                                              _searchResults = [];
+                                              _isSearching = false;
+                                            });
+                                          },
+                                        )
+                                      : null,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                ),
+                                onChanged: (value) {
+                                  setState(() {});
+                                  _searchRootWords(value);
+                                },
+                              ),
+                              _buildCopyPasteButtons(_searchController),
+                            ],
                           ),
                         ),
                         // Pagination info (hide when searching)
@@ -836,6 +889,43 @@ class _RootWordsViewState extends State<RootWordsView> {
                                           ),
                                         )
                                       : _buildListView(_rootWords)),
+                        // Urdu keyboard toggle + keyboard for list/search view
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Urdu Keyboard',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                ),
+                              ),
+                              TextButton.icon(
+                                icon: Icon(
+                                  _showUrduKeyboard ? Icons.keyboard_hide : Icons.keyboard,
+                                  size: 18,
+                                  color: colorPrimary,
+                                ),
+                                label: Text(
+                                  _showUrduKeyboard ? 'Hide' : 'Show',
+                                  style: TextStyle(color: colorPrimary, fontSize: 11),
+                                ),
+                                onPressed: () => setState(() => _showUrduKeyboard = !_showUrduKeyboard),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_showUrduKeyboard)
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: UrduKeyboard(
+                              controller: _activeKeyboardController ?? _searchController,
+                              keyHeight: 32,
+                              keyFontSize: 14,
+                            ),
+                          ),
+                        if (_searchController.text.trim().isNotEmpty)
+                          4.height,
                         if (_searchController.text.trim().isEmpty)
                           _buildPaginationControls(),
                       ],

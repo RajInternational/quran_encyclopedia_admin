@@ -88,17 +88,30 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   }
 
   Future<void> _updateSubjectCounts() async {
-    final subjectCollection = db
-        .collection('Book')
-        .doc('Quran')
-        .collection('SubjectCollection')
-        .orderBy('count');
-    final querySnapshot = await subjectCollection.get();
-
+    // Process in batches to avoid fetching entire collection at once
+    const batchSize = 100;
+    DocumentSnapshot? lastDoc;
     int count = 1;
-    for (final doc in querySnapshot.docs) {
-      await doc.reference.update({'count': count});
-      count++;
+    while (true) {
+      Query query = db
+          .collection('Book')
+          .doc('Quran')
+          .collection('SubjectCollection')
+          .orderBy('count')
+          .limit(batchSize);
+      if (lastDoc != null) {
+        query = query.startAfterDocument(lastDoc);
+      }
+      final snapshot = await query.get();
+      if (snapshot.docs.isEmpty) break;
+      final batch = db.batch();
+      for (final doc in snapshot.docs) {
+        batch.update(doc.reference, {'count': count});
+        count++;
+      }
+      await batch.commit();
+      lastDoc = snapshot.docs.last;
+      if (snapshot.docs.length < batchSize) break;
     }
   }
 
@@ -116,13 +129,13 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
     try {
       ayats.clear();
 
-      // First, get the total count of subjects
+      // Use count aggregation instead of fetching all documents
       final tempSubjectCollection = db
           .collection('Book')
           .doc('Quran')
           .collection('SubjectCollection');
-      final countSnapshot = await tempSubjectCollection.get();
-      subjectCount = countSnapshot.docs.length;
+      final countSnapshot = await tempSubjectCollection.count().get();
+      subjectCount = countSnapshot.count ?? 0;
 
 
       final startAtValue = ((selectedPage - 1) * itemsPerPage) + 1;

@@ -116,79 +116,11 @@ class AddQuestionsScreenState extends State<SahihBukhariAddHadeesScreen> {
   }
 
   Future<void> save() async {
+    // COMMENTED: Hadith books Firebase write disabled - not in use
     if (formKey.currentState!.validate()) {
-      if (selectedKitab != null) {
-        HadeesData hadeesData = HadeesData();
-
-        hadeesData.sNo = hadithNoCont.text.trim().toInt();
-        ;
-        hadeesData.hadithNo = hadithNoCont.text.trim().toInt();
-        hadeesData.kitabId = kitabIdCont.text.trim();
-        hadeesData.kitab = kitabCont.text.trim();
-        hadeesData.baabId = baabIdCont.text.trim();
-        hadeesData.baab = baabCont.text.trim();
-        hadeesData.bookInEnglish = bookInEnglishCont.text.trim();
-        hadeesData.bookInArabic = bookInArabicCont.text.trim();
-        hadeesData.bookInUrdu = bookInUrduCont.text.trim();
-        hadeesData.arabic = arabicCont.text.trim();
-        hadeesData.english = englishCont.text.trim();
-        hadeesData.urdu = urduCont.text.trim();
-        hadeesData.volume = volumeCont.text.trim();
-        hadeesData..ravi = raviCont.text.trim();
-        hadeesData.youtubeEnglishLink = englishLinkCont.text.trim();
-        hadeesData.youtubeUrduLink = urduLinkCont.text.trim();
-        hadeesData.updatedAt = DateTime.now();
-
-        if (isUpdate) {
-          // hadeesData.id = widget.data!.id;
-          hadeesData.createdAt = widget.data!.createdAt;
-
-          await sahihBukhariHadeesService
-              .updateDocument(hadeesData.toJson(), hadeesData.sNo.toString())
-              .then((value) {
-            toast('Update Successfully',
-                length: Toast.LENGTH_LONG,
-                bgColor: Colors.green,
-                textColor: Colors.white);
-            finish(context);
-          }).catchError((e) {
-            toast(e.toString());
-          });
-        } else {
-          hadeesData.createdAt = DateTime.now();
-
-          sahihBukhariHadeesService
-              .addDocumentWithCustomId(
-                  hadeesData.sNo.toString(), hadeesData.toJson())
-              .then((value) {
-            toast('Add Question Successfully',
-                length: Toast.LENGTH_LONG,
-                bgColor: Colors.green,
-                textColor: Colors.white);
-
-            sNoCont.clear();
-            hadithNoCont.clear();
-            kitabCont.clear();
-            kitabIdCont.clear();
-            baabIdCont.clear();
-            baabCont.clear();
-            bookInArabicCont.clear();
-            // bookInEnglishCont.clear();
-            // bookInUrduCont.clear();
-            arabicCont.clear();
-            urduCont.clear();
-            englishCont.clear();
-            volumeCont.clear();
-            raviCont.clear();
-            englishLinkCont.clear();
-            urduLinkCont.clear();
-
-            setState(() {});
-          }).catchError((e) {
-            log(e);
-          });
-        }
-      }
+      toast('Hadith books disabled');
+      return;
+      // ... Firebase add/update logic commented ...
     }
   }
 
@@ -211,17 +143,10 @@ class AddQuestionsScreenState extends State<SahihBukhariAddHadeesScreen> {
             TextButton(
               child: Text('Yes'),
               onPressed: () {
-                // if (getBoolAsync(IS_TEST_USER)) return toast(mTestUserMsg);
-
-                sahihBukhariHadeesService
-                    .removeDocument(widget.data!.sNo.toString())
-                    .then((value) {
-                  toast('Delete Successfully');
-                  finish(context);
-                  finish(context);
-                }).catchError((e) {
-                  toast(e.toString());
-                });
+                // COMMENTED: Hadith books Firebase delete disabled
+                // sahihBukhariHadeesService.removeDocument(widget.data!.sNo.toString())...
+                toast('Hadith books disabled');
+                finish(context);
               },
             ),
           ],

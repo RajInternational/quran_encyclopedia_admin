@@ -81,10 +81,11 @@ class DictionaryWordsService extends BaseService {
 
   /// Get dictionary words by rootHash
   Future<List<DictionaryWordModel>> getDictionaryWordsByRootHash(
-      String rootHash) async {
+      String rootHash, {int limit = 100}) async {
     return await ref!
         .where(DictionaryWordKeys.rootHash, isEqualTo: rootHash)
         .orderBy(CommonKeys.createdAt, descending: true)
+        .limit(limit)
         .get()
         .then((x) => x.docs
             .map((y) => DictionaryWordModel.fromJson(

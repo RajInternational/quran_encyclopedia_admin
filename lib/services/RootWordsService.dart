@@ -77,8 +77,8 @@ class RootWordsService extends BaseService {
   /// Fetches up to [fetchLimit] from Firestore and filters client-side
   Future<List<RootWordModel>> searchRootWords(
     String query, {
-    int limit = 30,
-    int fetchLimit = 500,
+    int limit = 20,
+    int fetchLimit = 100,
   }) async {
     if (query.trim().isEmpty) return [];
     final q = query.trim().toLowerCase();

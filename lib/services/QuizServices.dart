@@ -1,6 +1,7 @@
 import 'package:quizeapp/main.dart';
 import 'package:quizeapp/models/QuizData.dart';
 import 'package:quizeapp/services/BaseService.dart';
+import 'package:quizeapp/utils/ModelKeys.dart';
 
 class QuizServices extends BaseService {
   QuizServices() {
@@ -8,6 +9,6 @@ class QuizServices extends BaseService {
   }
 
   Future<List<QuizData>> get quizList async {
-    return await ref!.get().then((value) => value.docs.map((e) => QuizData.fromJson(e.data() as Map<String, dynamic>)).toList());
+    return await ref!.orderBy(CommonKeys.createdAt, descending: true).limit(100).get().then((value) => value.docs.map((e) => QuizData.fromJson(e.data() as Map<String, dynamic>)).toList());
   }
 }

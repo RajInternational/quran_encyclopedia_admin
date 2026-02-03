@@ -15,11 +15,11 @@ class UserService extends BaseService {
   }
 
   Query? getUserList() {
-    return ref;
+    return ref!.orderBy('updatedAt', descending: true);
   }
 
   Future<List<UserModel>> usersFuture() async {
-    return await ref!.orderBy('updatedAt', descending: true).get().then((x) => x.docs.map((y) => UserModel.fromJson(y.data() as Map<String, dynamic>)).toList());
+    return await ref!.orderBy('updatedAt', descending: true).limit(100).get().then((x) => x.docs.map((y) => UserModel.fromJson(y.data() as Map<String, dynamic>)).toList());
   }
 
   Future<bool> isUserExist(String? email, String loginType) async {

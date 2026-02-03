@@ -15,13 +15,15 @@ class SharedPreferencesHelper {
           .doc("Quran")
           .collection("SubjectCollection");
 
-      final subjectSnapshot = await subjectCollection.get();
-      print("Fetched ${subjectSnapshot.docs.length} documents.");
+      // Limit to avoid exceeding Firebase read quota
+      const limit = 50;
+      QuerySnapshot subjectSnapshot = await subjectCollection.orderBy('count').limit(limit).get();
+      print("Fetched ${subjectSnapshot.docs.length} documents (limit: $limit).");
 
       List<Map<String, dynamic>> subjects = [];
 
       for (var doc in subjectSnapshot.docs) {
-        Map<String, dynamic> subjectData = doc.data();
+        Map<String, dynamic> subjectData = doc.data() as Map<String, dynamic>;
 
         // Convert Timestamp fields to ISO-8601 strings
         subjectData = subjectData.map((key, value) {
@@ -39,7 +41,7 @@ class SharedPreferencesHelper {
             "Fetched ${ayatsSnapshot.docs.length} ayats for subject ${doc.id}.");
 
         subjectData['ayats'] = ayatsSnapshot.docs.map((e) {
-          final ayatData = e.data();
+          final ayatData = e.data() as Map<String, dynamic>;
 
           // Convert Timestamp fields in ayats
           return ayatData.map((key, value) {
