@@ -338,7 +338,10 @@ class _RootWordsViewState extends State<RootWordsView> {
     }
   }
 
-  Widget _buildCopyPasteButtons(TextEditingController controller) {
+  Widget _buildCopyPasteButtons(
+    TextEditingController controller, {
+    VoidCallback? onPaste,
+  }) {
     return Padding(
       padding: EdgeInsets.only(top: 6),
       child: Row(
@@ -366,6 +369,7 @@ class _RootWordsViewState extends State<RootWordsView> {
               if (data != null && data.text != null && data.text!.isNotEmpty) {
                 controller.text = data.text!;
                 setState(() {});
+                onPaste?.call();
                 toast('Pasted');
               } else {
                 toast('Clipboard is empty');
@@ -819,7 +823,10 @@ class _RootWordsViewState extends State<RootWordsView> {
                                   _searchRootWords(value);
                                 },
                               ),
-                              _buildCopyPasteButtons(_searchController),
+                              _buildCopyPasteButtons(
+                                _searchController,
+                                onPaste: () => _searchRootWords(_searchController.text),
+                              ),
                             ],
                           ),
                         ),

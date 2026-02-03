@@ -261,7 +261,10 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
     });
   }
 
-  Widget _buildCopyPasteButtons(TextEditingController controller) {
+  Widget _buildCopyPasteButtons(
+    TextEditingController controller, {
+    VoidCallback? onPaste,
+  }) {
     return Padding(
       padding: EdgeInsets.only(top: 6),
       child: Row(
@@ -289,6 +292,7 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
               if (data != null && data.text != null && data.text!.isNotEmpty) {
                 controller.text = data.text!;
                 setState(() {});
+                onPaste?.call();
                 toast('Pasted');
               } else {
                 toast('Clipboard is empty');
@@ -681,7 +685,10 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
                             _searchSqliteWords(value);
                           },
                         ),
-                        _buildCopyPasteButtons(_arabicWordController),
+                        _buildCopyPasteButtons(
+                          _arabicWordController,
+                          onPaste: () => _searchSqliteWords(_arabicWordController.text),
+                        ),
                       ],
                     ),
 
@@ -782,7 +789,10 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
                             return null;
                           },
                         ),
-                        _buildCopyPasteButtons(_rootSearchController),
+                        _buildCopyPasteButtons(
+                          _rootSearchController,
+                          onPaste: () => _filterRootWords(_rootSearchController.text),
+                        ),
                       ],
                     ),
 
@@ -926,7 +936,10 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
                                 _searchDictionaryWords(value);
                               },
                             ),
-                            _buildCopyPasteButtons(_listSearchController),
+                            _buildCopyPasteButtons(
+                              _listSearchController,
+                              onPaste: () => _searchDictionaryWords(_listSearchController.text),
+                            ),
                           ],
                         ),
                       ),
