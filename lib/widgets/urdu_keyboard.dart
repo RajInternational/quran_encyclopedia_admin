@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:quizeapp/utils/Colors.dart';
 
 /// Standalone Urdu keyboard with full character set.
@@ -67,6 +68,25 @@ class _UrduKeyboardState extends State<UrduKeyboard> {
   }
 
   Widget _buildKey(String char, {double flex = 1}) {
+    // Responsive sizing based on platform & screen
+    final size = MediaQuery.of(context).size;
+    final shortestSide = size.shortestSide;
+    final bool isWeb = kIsWeb;
+    final bool isPhone = !isWeb && shortestSide < 600;
+
+    // Base scale:
+    // - Phone: natural size (1.0)
+    // - Web: smaller keyboard (0.75)
+    // - Tablet/Desktop: slightly smaller (0.85)
+    final double scale = isWeb
+        ? 0.75
+        : isPhone
+            ? 1.0
+            : 0.85;
+
+    final double keyHeight = widget.keyHeight * scale;
+    final double baseFontSize = widget.keyFontSize * scale;
+
     return Expanded(
       flex: (flex * 10).toInt(),
       child: Padding(
@@ -79,7 +99,7 @@ class _UrduKeyboardState extends State<UrduKeyboard> {
             onTap: () => _onKeyTap(char),
             borderRadius: BorderRadius.circular(8),
             child: Container(
-              height: widget.keyHeight,
+              height: keyHeight,
               alignment: Alignment.center,
               child: char == '\b'
                   ? Icon(Icons.backspace_outlined, size: 22, color: Colors.black87)
@@ -91,7 +111,7 @@ class _UrduKeyboardState extends State<UrduKeyboard> {
                             fontFamily: char.runes.any((r) => r >= 0x0600 && r <= 0x06FF)
                                 ? 'ArabicFonts'
                                 : null,
-                            fontSize: char.length > 1 ? widget.keyFontSize - 2 : widget.keyFontSize,
+                            fontSize: char.length > 1 ? baseFontSize - 2 : baseFontSize,
                             color: widget.keyTextColor ?? Colors.black87,
                           ),
                         ),
