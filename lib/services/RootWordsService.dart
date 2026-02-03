@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:quizeapp/models/RootWordModel.dart';
+import 'package:quizeapp/utils/ArabicUtils.dart';
 import 'package:quizeapp/utils/ModelKeys.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
@@ -73,15 +74,18 @@ class RootWordsService extends BaseService {
             .toList());
   }
 
-  /// Search root words by rootWord, triLiteralWord, or description (contains, case-insensitive)
-  /// Fetches up to [fetchLimit] from Firestore and filters client-side
+  /// Search root words by rootWord, triLiteralWord, or description (contains).
+  /// Arabic fields (rootWord, triLiteralWord) are matched with or without tashkeel,
+  /// and ignoring spaces/tatweel for more flexible matching.
+  /// Fetches up to [fetchLimit] from Firestore (default: whole collection, max 10000) and filters client-side.
   Future<List<RootWordModel>> searchRootWords(
     String query, {
-    int limit = 20,
-    int fetchLimit = 100,
+    int limit = 50,
+    int fetchLimit = 10000,
   }) async {
     if (query.trim().isEmpty) return [];
-    final q = query.trim().toLowerCase();
+    final q = query.trim();
+    final qLower = q.toLowerCase();
     final snapshot = await ref!
         .orderBy(CommonKeys.createdAt, descending: true)
         .limit(fetchLimit)
@@ -91,16 +95,16 @@ class RootWordsService extends BaseService {
             y.data() as Map<String, dynamic>..[CommonKeys.id] = y.id))
         .toList();
     final matches = all.where((w) {
-      final rw = (w.rootWord ?? '').toLowerCase();
-      final tri = (w.triLiteralWord ?? '').toLowerCase();
+      final rw = w.rootWord ?? '';
+      final tri = w.triLiteralWord ?? '';
       final desc = (w.description ?? '').toLowerCase();
       final urduShort = (w.urduShortMeaning ?? '').toLowerCase();
       final engShort = (w.englishShortMeaning ?? '').toLowerCase();
-      return rw.contains(q) ||
-          tri.contains(q) ||
-          desc.contains(q) ||
-          urduShort.contains(q) ||
-          engShort.contains(q);
+      return ArabicUtils.containsNormalized(rw, q) ||
+          ArabicUtils.containsNormalized(tri, q) ||
+          desc.contains(qLower) ||
+          urduShort.contains(qLower) ||
+          engShort.contains(qLower);
     }).take(limit).toList();
     return matches;
   }

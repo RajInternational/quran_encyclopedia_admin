@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:quizeapp/models/DictionaryWordModel.dart';
+import 'package:quizeapp/utils/ArabicUtils.dart';
 import 'package:quizeapp/utils/ModelKeys.dart';
 
 import '../main.dart';
@@ -77,6 +78,32 @@ class DictionaryWordsService extends BaseService {
       log('Error getting dictionary word: $e');
       return null;
     }
+  }
+
+  /// Search dictionary words by Arabic word (contains, client-side filter).
+  /// Matches with or without tashkeel and ignores spaces/tatweel
+  /// (e.g. "رب" matches "رَبِّ").
+  /// Fetches up to [fetchLimit] from Firestore and returns up to [limit] matches.
+  Future<List<DictionaryWordModel>> searchDictionaryWords(
+    String query, {
+    int limit = 20,
+    int fetchLimit = 500,
+  }) async {
+    if (query.trim().isEmpty) return [];
+    final q = query.trim();
+    final snapshot = await ref!
+        .orderBy(CommonKeys.createdAt, descending: true)
+        .limit(fetchLimit)
+        .get();
+    final all = snapshot.docs
+        .map((y) => DictionaryWordModel.fromJson(
+            y.data() as Map<String, dynamic>..[CommonKeys.id] = y.id))
+        .toList();
+    final matches = all
+        .where((w) => ArabicUtils.containsNormalized(w.arabicWord ?? '', q))
+        .take(limit)
+        .toList();
+    return matches;
   }
 
   /// Get dictionary words by rootHash

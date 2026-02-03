@@ -139,6 +139,11 @@ class _RootWordsViewState extends State<RootWordsView> {
     super.dispose();
   }
 
+  @override
+  void setState(VoidCallback fn) {
+    if (mounted) super.setState(fn);
+  }
+
   Future<void> _loadData({int? revertPageOnSkip}) async {
     if (!mounted) return;
     setState(() => _loading = true);
@@ -792,7 +797,7 @@ class _RootWordsViewState extends State<RootWordsView> {
                                   fontSize: 16,
                                 ),
                                 decoration: InputDecoration(
-                                  hintText: 'Search root word, tri-literal, description...',
+                                  hintText: 'روٹ لفظ، ثلاثی یا وضاحت سے تلاش کریں...',
                                   prefixIcon: Icon(Icons.search),
                                   suffixIcon: _searchController.text.isNotEmpty
                                       ? IconButton(

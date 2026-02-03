@@ -27,9 +27,11 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
   final TextEditingController _arabicWordController = TextEditingController();
   final TextEditingController _rootSearchController = TextEditingController();
   final TextEditingController _pageController = TextEditingController();
+  final TextEditingController _listSearchController = TextEditingController();
 
   final FocusNode _arabicWordFocus = FocusNode();
   final FocusNode _rootSearchFocus = FocusNode();
+  final FocusNode _listSearchFocus = FocusNode();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -46,6 +48,11 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
 
   DictionaryWordModel? _editingWord;
   Timer? _searchDebounceTimer;
+
+  /// List search (by Arabic word)
+  List<DictionaryWordModel> _listSearchResults = [];
+  bool _isListSearching = false;
+  Timer? _listSearchDebounceTimer;
 
   /// Active controller for Urdu keyboard input
   TextEditingController? _activeKeyboardController;
@@ -78,17 +85,30 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
         setState(() => _activeKeyboardController = _rootSearchController);
       }
     });
+    _listSearchFocus.addListener(() {
+      if (_listSearchFocus.hasFocus) {
+        setState(() => _activeKeyboardController = _listSearchController);
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchDebounceTimer?.cancel();
+    _listSearchDebounceTimer?.cancel();
     _arabicWordController.dispose();
     _rootSearchController.dispose();
     _pageController.dispose();
+    _listSearchController.dispose();
     _arabicWordFocus.dispose();
     _rootSearchFocus.dispose();
+    _listSearchFocus.dispose();
     super.dispose();
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    if (mounted) super.setState(fn);
   }
 
   Future<void> _loadData({int? revertPageOnSkip}) async {
@@ -144,12 +164,8 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
 
   Future<void> _loadRootWords() async {
     try {
-      // Minimal initial load for dropdown; user can search for more
-      final result = await _rootWordsService.getRootWordsPaginated(
-        limit: 50,
-        startAfterDocument: null,
-      );
-      _rootWords = (result['items'] as List<RootWordModel>);
+      // Load all root words once so form search has full access
+      _rootWords = await _rootWordsService.getRootWordsFuture();
       setState(() {});
     } catch (e) {
       toast("Error loading root words");
@@ -186,6 +202,41 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
       _showSuggestions = false;
       _showForm = true;
       _activeKeyboardController = _arabicWordController;
+    });
+  }
+
+  /// Search dictionary words by Arabic word (debounced)
+  void _searchDictionaryWords(String query) {
+    _listSearchDebounceTimer?.cancel();
+    if (query.trim().isEmpty) {
+      setState(() {
+        _listSearchResults = [];
+        _isListSearching = false;
+      });
+      return;
+    }
+    _listSearchDebounceTimer = Timer(Duration(milliseconds: 300), () async {
+      setState(() => _isListSearching = true);
+      try {
+        final results = await _dictionaryWordsService.searchDictionaryWords(
+          query,
+          limit: 30,
+        );
+        if (mounted) {
+          setState(() {
+            _listSearchResults = results;
+            _isListSearching = false;
+          });
+        }
+      } catch (e) {
+        log('Error searching dictionary words: $e');
+        if (mounted) {
+          setState(() {
+            _listSearchResults = [];
+            _isListSearching = false;
+          });
+        }
+      }
     });
   }
 
@@ -840,61 +891,199 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
                 ? Center(child: CircularProgressIndicator())
                 : Column(
                     children: [
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        child: Text(
-                          'Page $_selectedPage of ${_totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil()} - Showing ${_dictionaryWords.length} (Total: $_totalCount)',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.grey[600]),
+                      // Search by Arabic word (with Urdu keyboard support)
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AppTextField(
+                              controller: _listSearchController,
+                              focus: _listSearchFocus,
+                              textFieldType: TextFieldType.OTHER,
+                              textAlign: TextAlign.right,
+                              textStyle: TextStyle(
+                                fontFamily: 'ArabicFonts',
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'عربی لفظ سے تلاش کریں...',
+                                prefixIcon: Icon(Icons.search),
+                                suffixIcon: _listSearchController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: Icon(Icons.clear, size: 20),
+                                        onPressed: () {
+                                          _listSearchController.clear();
+                                          setState(() {
+                                            _listSearchResults = [];
+                                            _isListSearching = false;
+                                          });
+                                        },
+                                      )
+                                    : null,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
+                              onChanged: (value) {
+                                setState(() {});
+                                _searchDictionaryWords(value);
+                              },
+                            ),
+                            _buildCopyPasteButtons(_listSearchController),
+                          ],
                         ),
                       ),
+                      if (_listSearchController.text.trim().isEmpty)
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          child: Text(
+                            'Page $_selectedPage of ${_totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil()} - Showing ${_dictionaryWords.length} (Total: $_totalCount)',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ),
                       Expanded(
-                        child: _dictionaryWords.isEmpty
-                            ? Center(child: Text("No dictionary words found"))
-                            : Builder(
-                                builder: (context) {
-                                  final rootMap = {
-                                    for (var r in _rootWords)
-                                      if (r.id != null) r.id!: r
-                                  };
-                                  return ListView.builder(
-                                    itemCount: _dictionaryWords.length,
-                                    itemBuilder: (_, i) {
-                                      final word = _dictionaryWords[i];
-                                      final root = rootMap[word.rootHash] ??
-                                          RootWordModel(rootWord: "Unknown");
-
-                                      return Card(
-                                        margin: EdgeInsets.all(12),
-                                        child: ListTile(
-                                          title: Text(word.arabicWord ?? ""),
-                                          subtitle: Text(
-                                              "Root: ${root.rootWord}"),
-                                          trailing: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              IconButton(
-                                                icon: Icon(Icons.edit,
-                                                    color: Colors.blue),
-                                                onPressed: () =>
-                                                    _openEditForm(word),
-                                              ),
-                                              IconButton(
-                                                icon: Icon(Icons.delete,
-                                                    color: Colors.red),
-                                                onPressed: () =>
-                                                    _deleteWord(word),
-                                              ),
-                                            ],
-                                          ),
+                        child: _isListSearching
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    CircularProgressIndicator(color: colorPrimary),
+                                    12.height,
+                                    Text('Searching...', style: secondaryTextStyle()),
+                                  ],
+                                ),
+                              )
+                            : _listSearchController.text.trim().isNotEmpty
+                                ? (_listSearchResults.isEmpty
+                                    ? Center(
+                                        child: Text(
+                                          'No dictionary words found',
+                                          style: secondaryTextStyle(color: Colors.grey[600]),
                                         ),
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
+                                      )
+                                    : Builder(
+                                        builder: (context) {
+                                          final rootMap = {
+                                            for (var r in _rootWords)
+                                              if (r.id != null) r.id!: r
+                                          };
+                                          return ListView.builder(
+                                            itemCount: _listSearchResults.length,
+                                            itemBuilder: (_, i) {
+                                              final word = _listSearchResults[i];
+                                              final root = rootMap[word.rootHash] ??
+                                                  RootWordModel(rootWord: "Unknown");
+                                              return Card(
+                                                margin: EdgeInsets.all(12),
+                                                child: ListTile(
+                                                  title: Text(
+                                                    word.arabicWord ?? "",
+                                                    style: TextStyle(fontFamily: 'ArabicFonts', fontSize: 18),
+                                                  ),
+                                                  subtitle: Text("Root: ${root.rootWord}"),
+                                                  trailing: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      IconButton(
+                                                        icon: Icon(Icons.edit, color: Colors.blue),
+                                                        onPressed: () => _openEditForm(word),
+                                                      ),
+                                                      IconButton(
+                                                        icon: Icon(Icons.delete, color: Colors.red),
+                                                        onPressed: () => _deleteWord(word),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  onTap: () => _openEditForm(word),
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ))
+                                : _dictionaryWords.isEmpty
+                                    ? Center(child: Text("No dictionary words found"))
+                                    : Builder(
+                                        builder: (context) {
+                                          final rootMap = {
+                                            for (var r in _rootWords)
+                                              if (r.id != null) r.id!: r
+                                          };
+                                          return ListView.builder(
+                                            itemCount: _dictionaryWords.length,
+                                            itemBuilder: (_, i) {
+                                              final word = _dictionaryWords[i];
+                                              final root = rootMap[word.rootHash] ??
+                                                  RootWordModel(rootWord: "Unknown");
+
+                                              return Card(
+                                                margin: EdgeInsets.all(12),
+                                                child: ListTile(
+                                                  title: Text(word.arabicWord ?? ""),
+                                                  subtitle: Text(
+                                                      "Root: ${root.rootWord}"),
+                                                  trailing: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      IconButton(
+                                                        icon: Icon(Icons.edit,
+                                                            color: Colors.blue),
+                                                        onPressed: () =>
+                                                            _openEditForm(word),
+                                                      ),
+                                                      IconButton(
+                                                        icon: Icon(Icons.delete,
+                                                            color: Colors.red),
+                                                        onPressed: () =>
+                                                            _deleteWord(word),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
                       ),
-                      _buildPaginationControls(),
+                      // Urdu keyboard toggle + keyboard for list/search view
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Urdu Keyboard',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              ),
+                            ),
+                            TextButton.icon(
+                              icon: Icon(
+                                _showUrduKeyboard ? Icons.keyboard_hide : Icons.keyboard,
+                                size: 18,
+                                color: colorPrimary,
+                              ),
+                              label: Text(
+                                _showUrduKeyboard ? 'Hide' : 'Show',
+                                style: TextStyle(color: colorPrimary, fontSize: 11),
+                              ),
+                              onPressed: () => setState(() => _showUrduKeyboard = !_showUrduKeyboard),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_showUrduKeyboard)
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: UrduKeyboard(
+                            controller: _activeKeyboardController ?? _listSearchController,
+                            keyHeight: 32,
+                            keyFontSize: 14,
+                          ),
+                        ),
+                      if (_listSearchController.text.trim().isEmpty)
+                        _buildPaginationControls(),
                     ],
                   ),
             ),
