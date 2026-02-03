@@ -77,10 +77,11 @@ class RootWordsService extends BaseService {
   /// Search root words by rootWord, triLiteralWord, or description (contains).
   /// Arabic fields (rootWord, triLiteralWord) are matched with or without tashkeel,
   /// and ignoring spaces/tatweel for more flexible matching.
-  /// Fetches up to [fetchLimit] from Firestore (default: whole collection, max 10000) and filters client-side.
+  /// Fetches up to [fetchLimit] from Firestore (default: whole collection, max 10000)
+  /// and filters client-side.
   Future<List<RootWordModel>> searchRootWords(
     String query, {
-    int limit = 50,
+    int? limit,
     int fetchLimit = 10000,
   }) async {
     if (query.trim().isEmpty) return [];
@@ -105,8 +106,8 @@ class RootWordsService extends BaseService {
           desc.contains(qLower) ||
           urduShort.contains(qLower) ||
           engShort.contains(qLower);
-    }).take(limit).toList();
-    return matches;
+    });
+    return limit == null ? matches.toList() : matches.take(limit).toList();
   }
 
   /// Check if root word exists

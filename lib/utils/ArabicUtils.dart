@@ -6,12 +6,16 @@ class ArabicUtils {
   /// Also strips tatweel and spaces so searches work even if tri-literal
   /// roots are written with spaces (e.g. "ر ب ب" vs "ربب").
   ///
-  /// - Diacritics: \u064B-\u065F (Fathatan..Small Waw, etc.), \u0670 (Superscript Alef)
+  /// - Diacritics: \u0610-\u061A, \u064B-\u065F, \u0670, \u06D6-\u06ED
+  ///   (includes Quranic marks and vowel signs)
   /// - Tatweel: \u0640
   /// - Whitespace: all standard space characters (\\s)
   static String stripTashkeel(String text) {
     if (text.isEmpty) return text;
-    return text.replaceAll(RegExp(r'[\u064B-\u065F\u0670\u0640\s]'), '');
+    return text.replaceAll(
+      RegExp(r'[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640\s]'),
+      '',
+    );
   }
 
   /// Returns true if [haystack] contains [needle] when both are normalized

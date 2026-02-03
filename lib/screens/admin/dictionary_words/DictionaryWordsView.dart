@@ -215,13 +215,10 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
       });
       return;
     }
-    _listSearchDebounceTimer = Timer(Duration(milliseconds: 300), () async {
+    _listSearchDebounceTimer = Timer(Duration(milliseconds: 150), () async {
       setState(() => _isListSearching = true);
       try {
-        final results = await _dictionaryWordsService.searchDictionaryWords(
-          query,
-          limit: 30,
-        );
+        final results = await _dictionaryWordsService.searchDictionaryWords(query);
         if (mounted) {
           setState(() {
             _listSearchResults = results;
@@ -332,7 +329,7 @@ class _DictionaryWordsViewState extends State<DictionaryWordsView> {
     }
 
     // Debounce search by 300ms
-    _searchDebounceTimer = Timer(Duration(milliseconds: 300), () async {
+    _searchDebounceTimer = Timer(Duration(milliseconds: 150), () async {
       try {
         final results = await _quranDatabaseService.searchArabicWords(query, limit: 20);
         if (mounted) {

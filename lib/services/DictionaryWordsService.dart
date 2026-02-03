@@ -83,11 +83,12 @@ class DictionaryWordsService extends BaseService {
   /// Search dictionary words by Arabic word (contains, client-side filter).
   /// Matches with or without tashkeel and ignores spaces/tatweel
   /// (e.g. "رب" matches "رَبِّ").
-  /// Fetches up to [fetchLimit] from Firestore and returns up to [limit] matches.
+  /// Fetches up to [fetchLimit] from Firestore (default: whole collection, max 10000)
+  /// and returns all matches (or up to [limit] if provided).
   Future<List<DictionaryWordModel>> searchDictionaryWords(
     String query, {
-    int limit = 20,
-    int fetchLimit = 500,
+    int? limit,
+    int fetchLimit = 10000,
   }) async {
     if (query.trim().isEmpty) return [];
     final q = query.trim();
@@ -99,11 +100,9 @@ class DictionaryWordsService extends BaseService {
         .map((y) => DictionaryWordModel.fromJson(
             y.data() as Map<String, dynamic>..[CommonKeys.id] = y.id))
         .toList();
-    final matches = all
-        .where((w) => ArabicUtils.containsNormalized(w.arabicWord ?? '', q))
-        .take(limit)
-        .toList();
-    return matches;
+    final matches =
+        all.where((w) => ArabicUtils.containsNormalized(w.arabicWord ?? '', q));
+    return limit == null ? matches.toList() : matches.take(limit).toList();
   }
 
   /// Get dictionary words by rootHash

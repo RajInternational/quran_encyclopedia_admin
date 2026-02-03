@@ -205,10 +205,10 @@ class _RootWordsViewState extends State<RootWordsView> {
       });
       return;
     }
-    _searchDebounceTimer = Timer(Duration(milliseconds: 300), () async {
+    _searchDebounceTimer = Timer(Duration(milliseconds: 150), () async {
       setState(() => _isSearching = true);
       try {
-        final results = await _rootWordsService.searchRootWords(query, limit: 30);
+        final results = await _rootWordsService.searchRootWords(query);
         if (mounted) {
           setState(() {
             _searchResults = results;
