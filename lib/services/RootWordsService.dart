@@ -132,27 +132,19 @@ class RootWordsService extends BaseService {
     }
   }
 
-  /// Add new root word
+  /// Add new root word (duplicates allowed; no uniqueness check on rootWord).
   Future<void> addRootWord(RootWordModel rootWord) async {
     try {
       if (rootWord.rootWord == null || rootWord.rootWord!.trim().isEmpty) {
         throw 'Root word cannot be empty';
       }
 
-      String id = generateId(rootWord.rootWord!);
-
-      // Check if root word already exists
-      final exists = await rootWordExists(rootWord.rootWord!);
-      if (exists) {
-        throw 'Root word already exists';
-      }
-
-      rootWord.id = id;
       rootWord.createdAt = DateTime.now();
       rootWord.updatedAt = DateTime.now();
 
-      await addDocumentWithCustomId(id, rootWord.toJson());
-      log('Root word added successfully: $id');
+      final docRef = await addDocument(rootWord.toJson());
+      rootWord.id = docRef.id;
+      log('Root word added successfully: ${docRef.id}');
     } catch (e) {
       log('Error adding root word: $e');
       rethrow;

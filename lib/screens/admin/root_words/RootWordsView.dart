@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nb_utils/nb_utils.dart';
@@ -46,14 +45,15 @@ class _RootWordsViewState extends State<RootWordsView> {
   bool _showForm = false;
   // Pagination state (like subject_detail_screen)
   List<RootWordModel> _rootWords = [];
+  List<RootWordModel> _allRootWords = [];
   bool _loading = false;
   int _selectedPage = 1;
   int _currentPage = 1;
   int _totalCount = 0;
-  Map<int, DocumentSnapshot?> _pageCursors = {};
   final TextEditingController _pageController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   static const int _itemsPerPage = 10;
+  bool _sortNewestFirst = true;
 
   /// Search state
   List<RootWordModel> _searchResults = [];
@@ -144,55 +144,66 @@ class _RootWordsViewState extends State<RootWordsView> {
     if (mounted) super.setState(fn);
   }
 
-  Future<void> _loadData({int? revertPageOnSkip}) async {
+  Future<void> _loadData() async {
     if (!mounted) return;
     setState(() => _loading = true);
 
     try {
-      _totalCount = await _rootWordsService.getRootWordsCount();
-
-      // Fetch only target page: build cursor only for immediate previous page (1 extra fetch max)
-      final needCursorFor = _selectedPage > 1 ? _selectedPage - 1 : 0;
-      if (needCursorFor > 0 && !_pageCursors.containsKey(needCursorFor)) {
-        if (needCursorFor == 1) {
-          final r = await _rootWordsService.getRootWordsPaginated(limit: _itemsPerPage, startAfterDocument: null);
-          final last = r['lastDocument'] as DocumentSnapshot?;
-          if (last != null) _pageCursors[1] = last;
-        } else if (_pageCursors.containsKey(needCursorFor - 1)) {
-          final r = await _rootWordsService.getRootWordsPaginated(
-            limit: _itemsPerPage,
-            startAfterDocument: _pageCursors[needCursorFor - 1],
-          );
-          final last = r['lastDocument'] as DocumentSnapshot?;
-          if (last != null) _pageCursors[needCursorFor] = last;
-        } else {
-          toast('Use Previous/Next to reach this page (reduces Firebase reads)');
-          if (mounted && revertPageOnSkip != null) setState(() => _selectedPage = revertPageOnSkip);
-          setState(() => _loading = false);
-          return;
-        }
-      }
-
-      final result = await _rootWordsService.getRootWordsPaginated(
-        limit: _itemsPerPage,
-        startAfterDocument:
-            _selectedPage > 1 ? _pageCursors[_selectedPage - 1] : null,
-      );
-
-      if (mounted) {
-        setState(() {
-          _rootWords = (result['items'] as List<RootWordModel>);
-          final lastDoc = result['lastDocument'] as DocumentSnapshot?;
-          if (lastDoc != null) {
-            _pageCursors[_selectedPage] = lastDoc;
-          }
-        });
-      }
+      final allRootWords = await _rootWordsService.getRootWordsFuture();
+      if (!mounted) return;
+      setState(() {
+        _allRootWords = allRootWords;
+        _totalCount = allRootWords.length;
+      });
+      _applySortAndPaginate();
     } catch (e) {
       if (mounted) toast('Error loading root words: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _applySortAndPaginate() {
+    final sorted = List<RootWordModel>.from(_allRootWords)
+      ..sort((a, b) {
+        final aDate = a.createdAt;
+        final bDate = b.createdAt;
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        final compare = aDate.compareTo(bDate);
+        return _sortNewestFirst ? -compare : compare;
+      });
+
+    final totalPages = _totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil();
+    if (_selectedPage > totalPages) {
+      _selectedPage = totalPages;
+    }
+
+    final start = (_selectedPage - 1) * _itemsPerPage;
+    final end = (start + _itemsPerPage) > sorted.length
+        ? sorted.length
+        : (start + _itemsPerPage);
+    setState(() {
+      _rootWords = start >= sorted.length ? [] : sorted.sublist(start, end);
+      _currentPage = ((_selectedPage - 1) ~/ 8) * 8 + 1;
+    });
+  }
+
+  void _changePage(int pageNumber) {
+    final totalPages = _totalCount == 0 ? 1 : (_totalCount / _itemsPerPage).ceil();
+    if (pageNumber < 1 || pageNumber > totalPages) return;
+    setState(() => _selectedPage = pageNumber);
+    _applySortAndPaginate();
+  }
+
+  void _toggleSortOrder() {
+    setState(() {
+      _sortNewestFirst = !_sortNewestFirst;
+      _selectedPage = 1;
+      _currentPage = 1;
+    });
+    _applySortAndPaginate();
   }
 
   /// Search root words with debounce
@@ -210,8 +221,18 @@ class _RootWordsViewState extends State<RootWordsView> {
       try {
         final results = await _rootWordsService.searchRootWords(query);
         if (mounted) {
+          final sortedResults = List<RootWordModel>.from(results)
+            ..sort((a, b) {
+              final aDate = a.createdAt;
+              final bDate = b.createdAt;
+              if (aDate == null && bDate == null) return 0;
+              if (aDate == null) return 1;
+              if (bDate == null) return -1;
+              final compare = aDate.compareTo(bDate);
+              return _sortNewestFirst ? -compare : compare;
+            });
           setState(() {
-            _searchResults = results;
+            _searchResults = sortedResults;
             _isSearching = false;
           });
         }
@@ -397,9 +418,8 @@ class _RootWordsViewState extends State<RootWordsView> {
           IconButton(
             icon: Icon(Icons.arrow_back_ios, size: 20),
             onPressed: _selectedPage > 1
-                ? () async {
-                    setState(() => _selectedPage--);
-                    await _loadData();
+                ? () {
+                    _changePage(_selectedPage - 1);
                   }
                 : null,
           ),
@@ -427,14 +447,8 @@ class _RootWordsViewState extends State<RootWordsView> {
           IconButton(
             icon: Icon(Icons.arrow_forward_ios, size: 20),
             onPressed: _selectedPage < totalPages
-                ? () async {
-                    setState(() {
-                      _selectedPage++;
-                      if (_selectedPage > _currentPage + 7) {
-                        _currentPage = _selectedPage;
-                      }
-                    });
-                    await _loadData();
+                ? () {
+                    _changePage(_selectedPage + 1);
                   }
                 : null,
           ),
@@ -456,7 +470,7 @@ class _RootWordsViewState extends State<RootWordsView> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () async {
+                  onPressed: () {
                     final input = _pageController.text.trim();
                     if (input.isNotEmpty) {
                       final pageNumber = int.tryParse(input);
@@ -465,13 +479,7 @@ class _RootWordsViewState extends State<RootWordsView> {
                       if (pageNumber != null &&
                           pageNumber >= 1 &&
                           pageNumber <= totalPages) {
-                        final prevPage = _selectedPage;
-                        setState(() {
-                          _selectedPage = pageNumber;
-                          _currentPage =
-                              ((pageNumber - 1) ~/ 8) * 8 + 1;
-                        });
-                        await _loadData(revertPageOnSkip: prevPage);
+                        _changePage(pageNumber);
                         _pageController.clear();
                       }
                     }
@@ -492,9 +500,8 @@ class _RootWordsViewState extends State<RootWordsView> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2.0),
       child: GestureDetector(
-        onTap: () async {
-          setState(() => _selectedPage = pageNumber);
-          await _loadData();
+        onTap: () {
+          _changePage(pageNumber);
         },
         child: CircleAvatar(
           radius: 16,
@@ -522,6 +529,17 @@ class _RootWordsViewState extends State<RootWordsView> {
         backgroundColor: colorPrimary,
         elevation: 0,
         actions: [
+          if (!_showForm)
+            IconButton(
+              icon: Icon(
+                _sortNewestFirst ? Icons.arrow_downward : Icons.arrow_upward,
+                color: Colors.white,
+              ),
+              onPressed: _toggleSortOrder,
+              tooltip: _sortNewestFirst
+                  ? 'Sort: Newest first'
+                  : 'Sort: Oldest first',
+            ),
           if (!_showForm)
             IconButton(
               icon: Icon(Icons.add, color: Colors.white),
@@ -980,7 +998,7 @@ class _RootWordsViewState extends State<RootWordsView> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Total Root Words: ${rootWords.length}',
+                  'Total Root Words: ${rootWords.length} (${_sortNewestFirst ? "Newest" : "Oldest"} first)',
                   style: boldTextStyle(size: 14, color: colorPrimary),
                 ),
               ],
